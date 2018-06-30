@@ -1,4 +1,4 @@
-%matplotlib inline
+#%matplotlib inline
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
@@ -135,7 +135,7 @@ def get_batch(batch_size, kernels, load_mem, data=None):
     if(load_mem):
         y = data['y']
     
-    training_patches_dir = '../../data/VOC2012_patches/training'    
+    training_patches_dir = '../../../datasets/VOC2012_patches/training'    
     
     num_img = 12500
     num_patches_per_img = 40
@@ -176,9 +176,10 @@ def get_batch(batch_size, kernels, load_mem, data=None):
         x_batch.append(img_b)
         y_flat_true_batch.append(img_s_flat)
         k_batch.append(k)
-        
-    
-    return np.array(x_batch), np.array(y_flat_true_batch), np.array(k_batch)
+
+    x_batch = np.array(x_batch).reshape((batch_size, img_s.shape[0], img_s.shape[0], 1))        
+   
+    return x_batch, np.array(y_flat_true_batch), np.array(k_batch)
 
 
 
@@ -186,9 +187,9 @@ def get_batch(batch_size, kernels, load_mem, data=None):
 
     # Data will come in batches 
 #data = input_data.read_data_sets('data/MNIST/', one_hot=True)
-o = io.loadmat('../../data/kernels/train_kernels.mat')
+o = io.loadmat('../../kernels/train_kernels.mat')
 kernels = o['kernels']
-training_patches_dir = '../../data/VOC2012_patches/training'
+training_patches_dir = '../../../datasets/VOC2012_patches/training'
 
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
@@ -202,11 +203,17 @@ img_shape = (img_size, img_size)
 
 # Convolutional Layer 1.
 filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters1 = 16         # There are 16 of these filters.
+num_filters1 = 32         # There are 16 of these filters.
 
 # Convolutional Layer 2.
 filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters2 = 36         # There are 36 of these filters.
+num_filters2 = 64         # There are 36 of these filters.
+
+# Convolutional Layer 3
+filter_size3 = 5
+num_filters3 = 128
+
+
 
 # Fully-connected layer.
 fc_size = img_size_flat   # Number of neurons in fully-connected layer.
@@ -220,7 +227,7 @@ num_channels = 1
 output_size = img_size_flat
 
 
-train_batch_size = 8
+train_batch_size = 64
 
 # Counter for total number of iterations performed so far.
 total_iterations = 0
@@ -253,7 +260,15 @@ layer_conv2, weights_conv2 = \
                    num_filters=num_filters2,
                    use_pooling=True)
 
-layer_flat, num_features = flatten_layer(layer_conv2)
+layer_conv3, weights_conv3 = \
+    new_conv_layer(input=layer_conv2,
+                   num_input_channels=num_filters2,
+                   filter_size=filter_size3,
+                   num_filters=num_filters3,
+                   use_pooling=True)
+
+
+layer_flat, num_features = flatten_layer(layer_conv3)
 
 
 layer_fc1 = new_fc_layer(input=layer_flat,
@@ -261,7 +276,12 @@ layer_fc1 = new_fc_layer(input=layer_flat,
                          num_outputs=fc_size,
                          use_relu=True)
 
-output = new_fc_layer(input=layer_fc1,
+layer_fc2 = new_fc_layer(input=layer_fc1,
+                         num_inputs=fc_size,
+                         num_outputs=fc_size,
+                         use_relu=True)
+
+output = new_fc_layer(input=layer_fc2,
                          num_inputs=fc_size,
                          num_outputs=output_size,
                          use_relu=False)
@@ -276,6 +296,8 @@ optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
 def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False):
     # num_iterations is the number of iters to add onto how many have already been done
     
+    saver = tf.train.Saver()
+
     ## Initializing a session for the neural network
     session = tf.Session()
     session.run(tf.global_variables_initializer())
@@ -297,7 +319,7 @@ def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False
         session.run(optimizer, feed_dict=feed_dict_train)
 
         # Print status every 100 iterations.
-        if i % 1 == 0:
+        if i % 5 == 0:
             # Calculate the accuracy on the training-set.
             cost_val = session.run(cost, feed_dict=feed_dict_train)
 
@@ -318,6 +340,7 @@ def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False
 
     # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
+    save_path = saver.save(session, "../../TF_models/model_1.ckpt")
 
 
 def print_test_accuracy(show_example_errors=False,
@@ -379,6 +402,6 @@ def print_test_accuracy(show_example_errors=False,
 
 
     #print_test_accuracy()
-optimize(optimizer, cost, num_iterations=1, kernels=kernels)
-optimize(optimizer, cost, num_iterations=9, kernels=kernels) # We already performed 1 iteration above.
+#optimize(optimizer, cost, num_iterations=1, kernels=kernels)
+optimize(optimizer, cost, num_iterations=10000, kernels=kernels) # We already performed 1 iteration above.
 #print_test_accuracy()
