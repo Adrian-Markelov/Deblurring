@@ -1,4 +1,4 @@
-#%matplotlib inline
+#matplotlib inline
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
@@ -135,7 +135,7 @@ def get_batch(batch_size, kernels, load_mem, data=None):
     if(load_mem):
         y = data['y']
     
-    training_patches_dir = '../../../datasets/VOC2012_patches/training'    
+    training_patches_dir = '../../data/VOC2012_patches/training'    
     
     num_img = 12500
     num_patches_per_img = 40
@@ -187,9 +187,9 @@ def get_batch(batch_size, kernels, load_mem, data=None):
 
     # Data will come in batches 
 #data = input_data.read_data_sets('data/MNIST/', one_hot=True)
-o = io.loadmat('../../kernels/train_kernels.mat')
+o = io.loadmat('../../data/kernels/train_kernels.mat')
 kernels = o['kernels']
-training_patches_dir = '../../../datasets/VOC2012_patches/training'
+training_patches_dir = '../../data/VOC2012_patches/training'
 
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
@@ -340,7 +340,7 @@ def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False
 
     # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
-    save_path = saver.save(session, "../../TF_models/model_1.ckpt")
+    save_path = saver.save(session, "../../TF_models/cnn_model_2/model_2.ckpt")
 
 
 def print_test_accuracy(show_example_errors=False,
