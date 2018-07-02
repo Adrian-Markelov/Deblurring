@@ -19,9 +19,9 @@ def get_next_batch(patch_idx, batch_size, num_imgs, num_patches_per_img, data_di
     k_batch = []
     
     patch_idx = patch_idx
-    img_idx = min(np.floor(patch_idx/num_patches_per_img), num_imgs-1)
+    img_idx = min(int(np.floor(patch_idx/num_patches_per_img)), num_imgs-1)
     p_idx = np.mod(patch_idx, num_patches_per_img)
-    batch_size = min(batch_size, num_patches-sample_idx)
+    batch_size = min(batch_size, num_patches-patch_idx)
     for i in range(batch_size):
         # Select a kernel
         k_idx = randint(0, num_kernels-1)
@@ -51,8 +51,8 @@ def get_next_batch(patch_idx, batch_size, num_imgs, num_patches_per_img, data_di
         
         # go to next image
         patch_idx = patch_idx + 1
-        img_idx = img_idx + 1
-        p_idx = p_idx + 1
+        img_idx = min(int(np.floor(patch_idx/num_patches_per_img)), num_imgs-1)
+        p_idx = np.mod(patch_idx, num_patches_per_img)
 
     x_batch = np.array(x_batch).reshape((batch_size, img_s.shape[0], img_s.shape[0], 1))        
    
