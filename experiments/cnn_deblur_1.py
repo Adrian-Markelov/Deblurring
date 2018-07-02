@@ -53,7 +53,8 @@ def new_conv_layer(input,              # The previous layer.
                    num_input_channels, # Num. channels in prev. layer.
                    filter_size,        # Width and height of each filter.
                    num_filters,        # Number of filters.
-                   use_pooling=True):  # Use 2x2 max-pooling.
+                   use_pooling=True, 
+                   name=None):  # Use 2x2 max-pooling.
 
     # Shape of the filter-weights for the convolution.
     # This format is determined by the TensorFlow API.
@@ -83,51 +84,35 @@ def new_conv_layer(input,              # The previous layer.
                                strides=[1, 2, 2, 1],
                                padding='SAME')
 
-    layer = tf.nn.relu(layer)
+    layer = tf.nn.relu(layer, name=name)
     return layer, weights
 
 def flatten_layer(layer):
     # Get the shape of the input layer.
     layer_shape = layer.get_shape()
 
-    # The shape of the input layer is assumed to be:
-    # layer_shape == [num_images, img_height, img_width, num_channels]
-
-    # The number of features is: img_height * img_width * num_channels
-    # We can use a function from TensorFlow to calculate this.
     num_features = layer_shape[1:4].num_elements()
     
-    # Reshape the layer to [num_images, num_features].
-    # Note that we just set the size of the second dimension
-    # to num_features and the size of the first dimension to -1
-    # which means the size in that dimension is calculated
-    # so the total size of the tensor is unchanged from the reshaping.
     layer_flat = tf.reshape(layer, [-1, num_features])
 
-    # The shape of the flattened layer is now:
-    # [num_images, img_height * img_width * num_channels]
-
-    # Return both the flattened layer and the number of features.
     return layer_flat, num_features
 
 
 def new_fc_layer(input,          # The previous layer.
                  num_inputs,     # Num. inputs from prev. layer.
                  num_outputs,    # Num. outputs.
-                 use_relu=True): # Use Rectified Linear Unit (ReLU)?
+                 use_relu=True, # Use Rectified Linear Unit (ReLU)?
+                 name=None):
 
     # Create new weights and biases.
     weights = new_weights(shape=[num_inputs, num_outputs])
     biases = new_biases(length=num_outputs)
 
-    # Calculate the layer as the matrix multiplication of
-    # the input and weights, and then add the bias-values.
-    layer = tf.matmul(input, weights) + biases
-
-    # Use ReLU?
     if use_relu:
-        layer = tf.nn.relu(layer)
-
+        layer = tf.matmul(input, weights) + biases
+        layer = tf.nn.relu(layer, name=name)
+    else:
+        layer = tf.add(tf.matmul(input, weights), biases, name=name)
     return layer
 
 def get_next_batch(patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels, load_mem=False, data=None):
@@ -191,7 +176,7 @@ def get_next_batch(patch_idx, batch_size, num_imgs, num_patches_per_img, data_di
 o = io.loadmat('../../data/kernels/train_kernels.mat')
 kernels = o['kernels']
 training_patches_dir = '../../data/VOC2012_patches/training'
-testing_patches_dir = '../../data/VOC2012_patches/training' 
+testing_patches_dir = '../../data/VOC2012_patches/testing' 
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
 
@@ -228,7 +213,7 @@ num_channels = 1
 output_size = img_size_flat
 
 
-train_batch_size = 64
+training_batch_size = 64
 
 # Counter for total number of iterations performed so far.
 total_iterations = 0
@@ -238,7 +223,7 @@ test_batch_size = 8
 
 
 # Training info
-num_training_patches = 500000
+num_training_patches = 5
 num_training_imgs = 12500
 num_patches_per_img = 40    
 
@@ -250,7 +235,7 @@ num_patches_per_uniq_img = 40
 
 ## Building the graph for the Neural network with placeholders ONLY
 
-x = tf.placeholder(tf.float32, shape=[train_batch_size, img_size, img_size, num_channels], name='x')
+x = tf.placeholder(tf.float32, shape=[training_batch_size, img_size, img_size, num_channels], name='x')
 
 y_flat_true = tf.placeholder(tf.float32, shape=[None, output_size], name='y_flat_true')
 
@@ -293,7 +278,8 @@ layer_fc2 = new_fc_layer(input=layer_fc1,
 output = new_fc_layer(input=layer_fc2,
                          num_inputs=fc_size,
                          num_outputs=output_size,
-                         use_relu=False)
+                         use_relu=False,
+                         name='output_layer')
 y_flat_pred = output
 
 cost = tf.reduce_mean(tf.square(y_flat_pred-y_flat_true))
@@ -310,7 +296,7 @@ def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem
     for i in range(num_iterations):
 
         patch_idx = 0
-        for batch_idx in range(num_training_patches/training_batch_size)
+        for batch_idx in range(int(num_training_patches/training_batch_size)):
             x_batch, y_flat_true_batch, k_batch = get_batch(patch_idx, training_batch_size, num_training_imgs, num_patches_per_img, training_patches_dir, kernels)
             feed_dict_train = {x: x_batch,
                                y_flat_true: y_flat_true_batch}
@@ -330,14 +316,11 @@ def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem
 
             patch_idx = patch_idx + training_batch_size
 
-    # Update the total number of iterations performed.
-    total_iterations += num_iterations
-
     # Ending time.
     end_time = time.time()
 
     # Print the time-usage.
-    print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
+    print("Time usage: " + str(timedelta(seconds=int(round(end_time-start_time)))))
 
 
 def test(session, kernels):
@@ -375,7 +358,7 @@ train(session, optimizer, cost, num_iterations=1, kernels=kernels)
 #test(session, kernels)
 
 
-save_path = saver.save(session, "../../TF_models/cnn_model_2/model_2.ckpt")
+save_path = saver.save(session, "../../TF_models/cnn_model_2/model_2")
 
 
 
