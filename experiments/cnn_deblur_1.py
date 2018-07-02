@@ -130,23 +130,22 @@ def new_fc_layer(input,          # The previous layer.
 
     return layer
 
-def get_batch(batch_size, kernels, load_mem, data=None):
+def get_next_batch(patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels, load_mem=False, data=None):
     y = None # y is the set of sharp patches
     if(load_mem):
         y = data['y']
-    
-    training_patches_dir = '../../data/VOC2012_patches/training'    
-    
-    num_img = 12500
-    num_patches_per_img = 40
-    num_patches = num_img*num_patches_per_img
+     
+    num_patches = num_imgs*num_patches_per_img
     num_kernels = kernels.shape[2] # kernels = [41,41, num_kernels]
     
     x_batch = []
     y_flat_true_batch = []
     k_batch = []
     
-    
+    patch_idx = patch_idx
+    img_idx = min(np.floor(patch_idx/num_patches_per_img), num_imgs-1)
+    p_idx = np.mod(patch_idx, num_patches_per_img)
+    batch_size = min(batch_size, num_patches-sample_idx)
     for i in range(batch_size):
         # Select a kernel
         k_idx = randint(0, num_kernels-1)
@@ -155,13 +154,10 @@ def get_batch(batch_size, kernels, load_mem, data=None):
         # Load from memory
         # !!!!! MAKE SURE YOU MAKE THESE IMAGES GRAYSCALE !!!!!
         if(load_mem):
-            patch_idx = randint(0, num_patches-1)
             img_s = y[patch_idx]
         # Loading from disk
         else:
-            img_idx = randint(0, num_img-1)
-            p_idx = randint(0, num_patches_per_img-1)
-            patch_file = training_patches_dir + '/patch_'+str(img_idx)+'_'+str(p_idx)+'.jpg'
+            patch_file = data_dir + '/patch_'+str(img_idx)+'_'+str(p_idx)+'.jpg'
             pil_img_o = Image.open(patch_file).convert('L')
             img_s = np.asarray(pil_img_o)
         
@@ -176,6 +172,11 @@ def get_batch(batch_size, kernels, load_mem, data=None):
         x_batch.append(img_b)
         y_flat_true_batch.append(img_s_flat)
         k_batch.append(k)
+        
+        # go to next image
+        patch_idx = patch_idx + 1
+        img_idx = img_idx + 1
+        p_idx = p_idx + 1
 
     x_batch = np.array(x_batch).reshape((batch_size, img_s.shape[0], img_s.shape[0], 1))        
    
@@ -190,7 +191,7 @@ def get_batch(batch_size, kernels, load_mem, data=None):
 o = io.loadmat('../../data/kernels/train_kernels.mat')
 kernels = o['kernels']
 training_patches_dir = '../../data/VOC2012_patches/training'
-
+testing_patches_dir = '../../data/VOC2012_patches/training' 
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
 
@@ -236,14 +237,22 @@ total_iterations = 0
 test_batch_size = 8
 
 
+# Training info
+num_training_patches = 500000
+num_training_imgs = 12500
+num_patches_per_img = 40    
 
-# FIX NETWORK OUTPUT TOPOLOGY
+# Testing Data
+num_test_patches = 3000
+num_imgs = 75
+num_patches_per_uniq_img = 40
+
 
 ## Building the graph for the Neural network with placeholders ONLY
 
 x = tf.placeholder(tf.float32, shape=[train_batch_size, img_size, img_size, num_channels], name='x')
 
-y_flat_true = tf.placeholder(tf.float32, shape=[None, output_size], name='y_true')
+y_flat_true = tf.placeholder(tf.float32, shape=[None, output_size], name='y_flat_true')
 
 
 layer_conv1, weights_conv1 = \
@@ -293,41 +302,33 @@ optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
 
 
 
-def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False):
-    # num_iterations is the number of iters to add onto how many have already been done
-    
-    saver = tf.train.Saver()
-
-    ## Initializing a session for the neural network
-    session = tf.Session()
-    session.run(tf.global_variables_initializer())
-    
-    # Ensure we update the global variable rather than a local copy.
-    global total_iterations
+def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem=False):
 
     # Start-time used for printing time-usage below.
     start_time = time.time()
+    
+    for i in range(num_iterations):
 
-    for i in range(total_iterations,
-                   total_iterations + num_iterations):
+        patch_idx = 0
+        for batch_idx in range(num_training_patches/training_batch_size)
+            x_batch, y_flat_true_batch, k_batch = get_batch(patch_idx, training_batch_size, num_training_imgs, num_patches_per_img, training_patches_dir, kernels)
+            feed_dict_train = {x: x_batch,
+                               y_flat_true: y_flat_true_batch}
 
-        
-        x_batch, y_flat_true_batch, k_batch = get_batch(train_batch_size, kernels, load_mem, data)
-        feed_dict_train = {x: x_batch,
-                           y_flat_true: y_flat_true_batch}
+            session.run(optimizer, feed_dict=feed_dict_train)
 
-        session.run(optimizer, feed_dict=feed_dict_train)
+            # Print status every 100 iterations.
+            if i % 5 == 0:
+                # Calculate the accuracy on the training-set.
+                cost_val = session.run(cost, feed_dict=feed_dict_train)
 
-        # Print status every 100 iterations.
-        if i % 5 == 0:
-            # Calculate the accuracy on the training-set.
-            cost_val = session.run(cost, feed_dict=feed_dict_train)
+                # Message for printing.
+                msg = "Optimization Iteration: {0:>6}, Training Cost: {1:>6.1%}"
 
-            # Message for printing.
-            msg = "Optimization Iteration: {0:>6}, Training Cost: {1:>6.1%}"
+                # Print it.
+                print(msg.format(i + 1, cost_val))
 
-            # Print it.
-            print(msg.format(i + 1, cost_val))
+            patch_idx = patch_idx + training_batch_size
 
     # Update the total number of iterations performed.
     total_iterations += num_iterations
@@ -335,73 +336,47 @@ def optimize(optimizer, cost, num_iterations, kernels, data=None, load_mem=False
     # Ending time.
     end_time = time.time()
 
-    # Difference between start and end-times.
-    time_dif = end_time - start_time
-
     # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(time_dif)))))
-    save_path = saver.save(session, "../../TF_models/cnn_model_2/model_2.ckpt")
 
 
-def print_test_accuracy(show_example_errors=False,
-                        show_confusion_matrix=False):
-
-    # Number of images in the test-set.
-    num_test = len(data.test.images)
-
-    # Allocate an array for the predicted classes which
-    # will be calculated in batches and filled into this array.
-    cls_pred = np.zeros(shape=num_test, dtype=np.int)
-
-    # Now calculate the predicted classes for the batches.
-    # We will just iterate through all the batches.
-    # There might be a more clever and Pythonic way of doing this.
+def test(session, kernels):
 
     # The starting index for the next batch is denoted i.
-    i = 0
-
-    while i < num_test:
-        # The ending index for the next batch is denoted j.
-        j = min(i + test_batch_size, num_test)
+    patch_idx = 0
+    
+    patch_sharp_pred = np.zeros((num_test_patches, img_size_flat))
+    
+    while patch_idx < num_test_patches:
 
         # Get the images from the test-set between index i and j.
-        images = data.test.images[i:j, :]
-
-        # Get the associated labels.
-        labels = data.test.labels[i:j, :]
+        patches = get_batch(patch_idx, testing_batch_size, num_testing_imgs, num_patches_per_img, tresting_patches_dir, kernels) #data.test.images[i:j, :]
 
         # Create a feed-dict with these images and labels.
-        feed_dict = {x: images,
-                     y_true: labels}
+        feed_dict = {x: patches}
 
+        patch_idx_end = min(patch_idx+testing_batch_size, num_test_patches)
         # Calculate the predicted class using TensorFlow.
-        cls_pred[i:j] = session.run(y_pred_cls, feed_dict=feed_dict)
+        patch_sharp_pred[patch_idx:patch_idx_end, :] = session.run(y_flat_pred, feed_dict=feed_dict)
 
         # Set the start-index for the next batch to the
         # end-index of the current batch.
-        i = j
-
-    # Convenience variable for the true class-numbers of the test-set.
-    cls_true = data.test.cls
-
-    # Create a boolean array whether each image is correctly classified.
-    correct = (cls_true == cls_pred)
-
-    # Calculate the number of correctly classified images.
-    # When summing a boolean array, False means 0 and True means 1.
-    correct_sum = correct.sum()
-
-    # Classification accuracy is the number of correctly classified
-    # images divided by the total number of images in the test-set.
-    acc = float(correct_sum) / num_test
-
-    # Print the accuracy.
-    msg = "Accuracy on Test-Set: {0:.1%} ({1} / {2})"
-    print(msg.format(acc, correct_sum, num_test))
+        patch_idx = patch_idx_end
 
 
 
-    #print_test_accuracy()
-#optimize(optimizer, cost, num_iterations=1, kernels=kernels)
-optimize(optimizer, cost, num_iterations=10000, kernels=kernels) # We already performed 1 iteration above.
-#print_test_accuracy()
+## Initializing a session for the neural network
+session = tf.Session()
+session.run(tf.global_variables_initializer())
+saver = tf.train.Saver()
+
+
+train(session, optimizer, cost, num_iterations=1, kernels=kernels)
+#test(session, kernels)
+
+
+save_path = saver.save(session, "../../TF_models/cnn_model_2/model_2.ckpt")
+
+
+
+
