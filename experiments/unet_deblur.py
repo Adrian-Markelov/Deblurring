@@ -159,8 +159,12 @@ num_channels = 1
 output_size = img_size_flat
 
 
-super_batch_size = 10000
-training_batch_size = 128
+training_batch_size = 64
+
+# Counter for total number of iterations performed so far.
+total_iterations = 0
+
+# Split the test-set into smaller batches of this size.
 test_batch_size = 8
 
 
@@ -237,21 +241,12 @@ def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem
     
     for i in range(num_iterations):
         print('iter: %d'%i)
-        x_super_batch = np.zeros((super_batch_size,img_size,img_size,1))
-        y_super_batch = np.zeros((super_batch_size,img_size_flat,1))
-        super_batch = (x_super_batch, y_super_batch)
         patch_idx = 0
         for batch_idx in range(int(num_training_patches/training_batch_size)):
-            if(i%5==0):
-                print('batch idx: %d'%batch_idx)
-            batch_start_time = time.time()
-            x_batch, y_flat_true_batch, k_batch = deblur_util.get_next_batch(super_batch, patch_idx, training_batch_size, num_training_imgs, num_patches_per_img, training_patches_dir, kernels)
-            batch_end_time = time.time()
-            batch_time_diff = batch_end_time-batch_start_time
-            print('time diff: %d secs'%batch_time_diff)
+            x_batch, y_flat_true_batch, k_batch = deblur_util.get_next_batch(patch_idx, training_batch_size, num_training_imgs, num_patches_per_img, training_patches_dir, kernels)
             feed_dict_train = {x: x_batch,
                                y_flat_true: y_flat_true_batch}
-            
+
             session.run(optimizer, feed_dict=feed_dict_train)
             patch_idx = patch_idx + training_batch_size
 
@@ -305,7 +300,7 @@ session.run(tf.global_variables_initializer())
 saver = tf.train.Saver()
 
 
-train(session, optimizer, cost, num_iterations=50, kernels=kernels)
+train(session, optimizer, cost, num_iterations=100, kernels=kernels)
 #test(session, kernels)
 
 
