@@ -1,9 +1,10 @@
-emport tensorflow as tf
+import tensorflow as tf
 import numpy as np
 from scipy import signal
 from scipy import io
 from random import randint
 from PIL import Image
+import pickle
 
 def build_new_super_batch(super_batch, patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels):
 
@@ -61,7 +62,10 @@ def get_next_super_batch(super_batch, patch_idx, batch_size):
     return super_batch, patch_idx, x_batch, y_flat_true_batch, k_batch
 
 def get_next_batch(super_batch, patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels, load_mem=False, data=None):
-    
+    if(super_batch == None):
+        with open('../../data/training_super_batch_'+ str(0) +'.pickle', 'wb') as handle:
+            sb_o = pickle.load(handle)
+            super_batch = sb_o['super_batch']
     num_patches = num_imgs*num_patches_per_img
     batch_size = min(batch_size, num_patches-patch_idx)
     # if current super batch can fit another batch take it
@@ -91,6 +95,7 @@ def save_super_batch(super_batch_size, patch_idx, batch_size, num_patches_per_im
     y_super_batch = np.zeros((super_batch_size, img_size_flat))
     k_super_batch = np.zeros((super_batch_size, kernel_size, kernel_size))
     for i in range(super_batch_size):
+        if(i%50==0): print('idx: %d'%i)
         # Select a kernel
         k_idx = randint(0, num_kernels-1)
         
@@ -106,8 +111,8 @@ def save_super_batch(super_batch_size, patch_idx, batch_size, num_patches_per_im
         img_s_flat = img_s.reshape((img_flat_size))
         
         # add x,y,k to batch
-        x_super_batch[i,:,:,0] = np.copy(img_s)
-        y_super_batch[i,:] = np.copy(img_b)
+        x_super_batch[i,:,:,0] = np.copy(img_b)
+        y_super_batch[i,:] = np.copy(img_s_flat)
         k_super_batch[i,:,:] = np.copy(k)
         
         # go to next image
@@ -134,7 +139,7 @@ def save_all_super_batches(super_batch_size, num_imgs, num_patches_per_img, data
     return
 
 
-super_batch_size = 10000
+super_batch_size = 100000
 num_imgs = 12500
 num_patches_per_img = 40
 training_patches_dir = '../../data/VOC2012_patches/training'
