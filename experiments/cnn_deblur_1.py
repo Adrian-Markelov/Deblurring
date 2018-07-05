@@ -117,12 +117,14 @@ def new_fc_layer(input,          # The previous layer.
 
 
 
-    # Data will come in batches 
-#data = input_data.read_data_sets('data/MNIST/', one_hot=True)
-o = io.loadmat('../../data/kernels/train_kernels.mat')
-kernels = o['kernels']
+# Data will come in batches 
 training_patches_dir = '../../data/VOC2012_patches/training'
 testing_patches_dir = '../../data/VOC2012_patches/testing' 
+kernels_file = '../../data/kernels/train_kernels.mat'
+
+o = io.loadmat(kernels_file)
+kernels = o['kernels']
+
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
 

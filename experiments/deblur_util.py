@@ -1,4 +1,4 @@
-import tensorflow as tf
+emport tensorflow as tf
 import numpy as np
 from scipy import signal
 from scipy import io
@@ -14,7 +14,11 @@ def build_new_super_batch(super_batch, patch_idx, batch_size, num_imgs, num_patc
     num_kernels = kernels.shape[2] # kernels = [41,41, num_kernels]
     img_idx = min(int(np.floor(patch_idx/num_patches_per_img)), num_imgs-1)
     p_idx = np.mod(patch_idx, num_patches_per_img)
-    
+
+    x_super_batch = super_batch[0]
+    y_super_batch = super_batch[1]
+    k_super_batch = super_batch[2]
+ 
     for i in range(super_batch_size):
         # Select a kernel
         k_idx = randint(0, num_kernels-1)
@@ -31,9 +35,9 @@ def build_new_super_batch(super_batch, patch_idx, batch_size, num_imgs, num_patc
         img_s_flat = img_s.reshape((img_flat_size))
         
         # add x,y,k to batch
-        super_batch.append(= img_b
-        y_flat_true_batch.append(img_s_flat)
-        k_batch.append(k)
+        x_super_batch[i,:,:,0] = np.copy(img_s)
+        y_super_batch[i,:] = np.copy(img_b)
+        k_super_batch[i,:,:] = np.copy(k)
         
         # go to next image
         patch_idx = patch_idx + 1
@@ -67,6 +71,79 @@ def get_next_batch(super_batch, patch_idx, batch_size, num_imgs, num_patches_per
     super_batch, patch_idx = build_new_super_batch(super_batch, patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels)
     return get_next_super_batch(super_batch, patch_idx, batch_size)
 # REMEMBER TO RESET THE patch_idx on edge case!!!
+
+
+
+def save_super_batch(super_batch_size, patch_idx, batch_size, num_patches_per_img, data_dir, kernels):
+    sb_idx = int(patch_idx/super_batch_size)
+    patch_idx = sb_idx*super_batch_size
+
+    img_size = 105
+    img_size_flat = img_size*img_size
+
+    kernel_size = 41
+    num_kernels = kernels.shape[2] # kernels = [41,41, num_kernels]
+    img_idx = min(int(np.floor(patch_idx/num_patches_per_img)), num_imgs-1)
+    
+
+    p_idx = np.mod(patch_idx, num_patches_per_img)   
+    x_super_batch = np.zeros((super_batch_size, img_size, img_size, 1))
+    y_super_batch = np.zeros((super_batch_size, img_size_flat))
+    k_super_batch = np.zeros((super_batch_size, kernel_size, kernel_size))
+    for i in range(super_batch_size):
+        # Select a kernel
+        k_idx = randint(0, num_kernels-1)
+        
+        patch_file = data_dir + '/patch_'+str(img_idx)+'_'+str(p_idx)+'.jpg'
+        pil_img_o = Image.open(patch_file).convert('L')
+        img_s = np.asarray(pil_img_o)
+        
+        # Get kernel and generate blury image
+        k = kernels[:,:,k_idx] 
+        img_b = signal.convolve2d(img_s, k, mode='same')
+        
+        img_flat_size = img_s.shape[0]**2
+        img_s_flat = img_s.reshape((img_flat_size))
+        
+        # add x,y,k to batch
+        x_super_batch[i,:,:,0] = np.copy(img_s)
+        y_super_batch[i,:] = np.copy(img_b)
+        k_super_batch[i,:,:] = np.copy(k)
+        
+        # go to next image
+        patch_idx = patch_idx + 1
+        img_idx = min(int(np.floor(patch_idx/num_patches_per_img)), num_imgs-1)
+        p_idx = patch_idx%num_patches_per_img
+
+    super_batch = (x_super_batch, y_super_batch, k_super_batch)
+    with open('../../data/training_super_batch_'+ str(sb_idx) +'.pickle', 'wb') as handle:
+        pickle.dump(super_batch, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+# Email rick about batching processes
+# 
+def save_all_super_batches(super_batch_size, num_imgs, num_patches_per_img, data_dir, kernels):
+
+    num_patches = 500000
+    patch_idx = 0
+    while(patch_idx < num_patches):
+        
+        save_super_batch(super_batch_size, patch_idx, num_imgs, num_patches_per_img, data_dir, kernels)
+        patch_idx += super_batch_size
+
+    return
+
+
+super_batch_size = 10000
+num_imgs = 12500
+num_patches_per_img = 40
+training_patches_dir = '../../data/VOC2012_patches/training'
+kernels_file = '../../data/kernels/train_kernels.mat'
+o = io.loadmat(kernels_file)
+kernels = o['kernels']
+
+save_all_super_batches(super_batch_size, num_imgs, num_patches_per_img, training_patches_dir, kernels)
+
 
 
 
