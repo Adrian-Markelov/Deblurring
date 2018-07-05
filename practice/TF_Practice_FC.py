@@ -27,6 +27,19 @@ def new_weights(shape):
 def new_biases(length):
     return tf.Variable(tf.truncated_normal([length]))
 
+
+def new_conv_layer(input,num_input_channels,filter_size,num_filters, use_pooling=True):
+    shape = [filter_size, filter_size, num_input_channels, num_filters]
+    weights = new_weights(shape=shape)
+    biases = new_biases(length=num_filters)
+    layer = tf.nn.conv2d(input=input,filter=weights, strides=[1,1,1,1], padding='SAME')
+    layer += biases
+    if(use_pooling):
+        layer = tf.nn.max_pool(value=layer, ksize=[1,2,2,1], strides= [1,2,2,1], padding='SAME')
+    layer = tf.nn.relu(layer)
+    return layer, weights
+    
+
 def new_fc_layer(layer_prev, num_inputs, num_outputs, use_relu=True):
     
     weights = new_weights(shape=[num_inputs, num_outputs])
@@ -85,6 +98,8 @@ session = tf.Session()
 
 session.run(tf.global_variable_initializer())
 
+saver = tf.train.saver()
+
 
 # Training Routine (optimize)
 
@@ -103,3 +118,8 @@ correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y,1))
 accuracy = tf.reduce_mean(tf.cast(correct,'float'))
 
 print('Accuracy: ', accuracy.eval({x:mnist.test.images, y:mnist.test.labels}))
+
+
+saver.save(session, './')
+
+
