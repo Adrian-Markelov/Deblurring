@@ -49,65 +49,30 @@ def new_weights(shape):
 def new_biases(length):
     return tf.Variable(tf.constant(0.05, shape=[length]))
 
-def new_conv_layer(input,              # The previous layer.
-                   num_input_channels, # Num. channels in prev. layer.
-                   filter_size,        # Width and height of each filter.
-                   num_filters,        # Number of filters.
-                   use_pooling=True, 
-                   name=None):  # Use 2x2 max-pooling.
-
-    # Shape of the filter-weights for the convolution.
-    # This format is determined by the TensorFlow API.
+def new_conv_layer(input, num_input_channels, filter_size, num_filters, use_pooling=True, name=None):  
     shape = [filter_size, filter_size, num_input_channels, num_filters]
-
-    # Create new weights aka. filters with the given shape.
     weights = new_weights(shape=shape)
-
-    # Create new biases, one for each filter.
     biases = new_biases(length=num_filters)
-
-    layer = tf.nn.conv2d(input=input,
-                         filter=weights,
-                         strides=[1, 1, 1, 1],
-                         padding='SAME')
-
-    # Add the biases to the results of the convolution.
-    # A bias-value is added to each filter-channel.
+    layer = tf.nn.conv2d(input=input, filter=weights,strides=[1, 1, 1, 1], padding='SAME')
     layer += biases
-    # Use pooling to down-sample the image resolution?
     if use_pooling:
-        # This is 2x2 max-pooling, which means that we
-        # consider 2x2 windows and select the largest value
-        # in each window. Then we move 2 pixels to the next window.
         layer = tf.nn.max_pool(value=layer,
                                ksize=[1, 2, 2, 1],
                                strides=[1, 2, 2, 1],
                                padding='SAME')
-
     layer = tf.nn.relu(layer, name=name)
     return layer, weights
 
 def flatten_layer(layer):
-    # Get the shape of the input layer.
     layer_shape = layer.get_shape()
-
     num_features = layer_shape[1:4].num_elements()
-    
     layer_flat = tf.reshape(layer, [-1, num_features])
-
     return layer_flat, num_features
 
 
-def new_fc_layer(input,          # The previous layer.
-                 num_inputs,     # Num. inputs from prev. layer.
-                 num_outputs,    # Num. outputs.
-                 use_relu=True, # Use Rectified Linear Unit (ReLU)?
-                 name=None):
-
-    # Create new weights and biases.
+def new_fc_layer(input, num_inputs, num_outputs, use_relu=True, name=None):
     weights = new_weights(shape=[num_inputs, num_outputs])
     biases = new_biases(length=num_outputs)
-
     if use_relu:
         layer = tf.matmul(input, weights) + biases
         layer = tf.nn.relu(layer, name=name)
@@ -117,12 +82,14 @@ def new_fc_layer(input,          # The previous layer.
 
 
 
-    # Data will come in batches 
-#data = input_data.read_data_sets('data/MNIST/', one_hot=True)
-o = io.loadmat('../../data/kernels/train_kernels.mat')
-kernels = o['kernels']
+# Data will come in batches 
 training_patches_dir = '../../data/VOC2012_patches/training'
 testing_patches_dir = '../../data/VOC2012_patches/testing' 
+kernels_file = '../../data/kernels/train_kernels.mat'
+
+o = io.loadmat(kernels_file)
+kernels = o['kernels']
+
 # We know that MNIST images are 28 pixels in each dimension.
 img_size = 105
 
@@ -159,12 +126,8 @@ num_channels = 1
 output_size = img_size_flat
 
 
-training_batch_size = 64
-
-# Counter for total number of iterations performed so far.
-total_iterations = 0
-
-# Split the test-set into smaller batches of this size.
+super_batch_size = 10000
+training_batch_size = 128
 test_batch_size = 8
 
 
@@ -241,14 +204,23 @@ def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem
     
     for i in range(num_iterations):
         print('iter: %d'%i)
+        super_batch = None 
         patch_idx = 0
         for batch_idx in range(int(num_training_patches/training_batch_size)):
-            x_batch, y_flat_true_batch, k_batch = deblur_util.get_next_batch(patch_idx, training_batch_size, num_training_imgs, num_patches_per_img, training_patches_dir, kernels)
+            if(i%5==0):
+                print('batch idx: %d'%batch_idx)
+            batch_start_time = time.time()
+            super_batch, patch_idx, x_batch, y_flat_true_batch, k_batch = \
+                                                                deblur_util.get_next_batch(super_batch, patch_idx, 
+                                                                                           training_batch_size, num_training_imgs, 
+                                                                                           num_patches_per_img, training_patches_dir, kernels)
+            batch_end_time = time.time()
+            batch_time_diff = batch_end_time-batch_start_time
+            print('time diff: %d secs'%batch_time_diff)
             feed_dict_train = {x: x_batch,
                                y_flat_true: y_flat_true_batch}
-
+            
             session.run(optimizer, feed_dict=feed_dict_train)
-            patch_idx = patch_idx + training_batch_size
 
         # Print status every 100 iterations.
         if i % 10 == 0:
@@ -300,7 +272,7 @@ session.run(tf.global_variables_initializer())
 saver = tf.train.Saver()
 
 
-train(session, optimizer, cost, num_iterations=100, kernels=kernels)
+train(session, optimizer, cost, num_iterations=50, kernels=kernels)
 #test(session, kernels)
 
 
