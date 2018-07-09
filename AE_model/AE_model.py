@@ -13,7 +13,7 @@ plt.ioff()
 testing_batch_size = 64
 training_batch_size = 64
 num_validation_samples = 64
-epochs = 500
+epochs = 2
 plot_rows = 4 # num of test image rows to run and plot
 plot_cols = 6 # ditto (cols must be even)
 add_skip_connect = False # if true will learn ID function in like 2 epochs
@@ -38,7 +38,7 @@ def new_biases(length):
     return tf.Variable(tf.truncated_normal(shape=[length]))
 
 
-def new_conv_layer(input,num_input_channels,filter_size,num_filters, stride=2,use_pooling=True):
+def new_conv_layer(input,num_input_channels,filter_size,num_filters, name, stride=2,use_pooling=True):
     shape = [filter_size, filter_size, num_input_channels, num_filters]
     weights = new_weights(shape=shape)
     biases = new_biases(length=num_filters)
@@ -46,10 +46,10 @@ def new_conv_layer(input,num_input_channels,filter_size,num_filters, stride=2,us
     layer += biases
     if(use_pooling):
         layer = tf.nn.max_pool(value=layer, ksize=[1,stride,stride,1], strides= [1,stride,stride,1], padding='SAME')
-    layer = tf.nn.relu(layer)
+    layer = tf.nn.relu(layer, name=name)
     return layer
 
-def new_conv_up_layer(input,num_input_channels,filter_size,num_filters):
+def new_conv_up_layer(input,num_input_channels,filter_size,num_filters, name):
     shape = [filter_size, filter_size, num_input_channels, num_filters]
     
     input_shape = input.get_shape().as_list()
@@ -64,11 +64,11 @@ def new_conv_up_layer(input,num_input_channels,filter_size,num_filters):
     #layer = tf.nn.conv2d(input=upsample_imgs,filter=weights, strides=[1,1,1,1], padding='SAME')
     #layer += biases
     
-    layer = tf.layers.conv2d(inputs=upsample_imgs, filters=num_filters, kernel_size=(filter_size,filter_size), padding='same', activation=tf.nn.relu)
+    layer = tf.layers.conv2d(inputs=upsample_imgs, filters=num_filters, kernel_size=(filter_size,filter_size), padding='same', activation=tf.nn.relu, name=name)
     return layer
 
-def new_conv_trans_layer(input,num_input_channels,filter_size,num_filters, stride=2):
-    #layer = tf.layers.conv2d_transpose(inputs=input,filters=num_filters, kernel_size=[2,2], strides=2)
+def new_conv_trans_layer(input,num_input_channels,filter_size,num_filters, name, stride=2):
+    #layer = tf.layers.conv2d_transpose(inputs=input,filters=num_filters, kernel_size=[2,2], strides=2, name=name)
     input_shape = input.get_shape().as_list()
     input_img_size = int(input_shape[1])
     k_shape = [2, 2, num_filters, num_input_channels]
@@ -82,7 +82,7 @@ def new_conv_trans_layer(input,num_input_channels,filter_size,num_filters, strid
     #  output_size = strides * (input_size-1) + kernel_size - 2*padding
     layer = tf.nn.conv2d_transpose(value=input,filter=weights, output_shape=output_shape, strides=[1,stride,stride,1], padding='SAME')
     layer += biases
-    layer = tf.nn.relu(layer)
+    layer = tf.nn.relu(layer, name=name)
     return layer
 
 
@@ -96,11 +96,11 @@ def build_net(x, add_skip_connect):
     num_filters_output = 1
 
     # Down Sampling
-    conv_layer_1 = new_conv_layer(x ,num_channels_x,filter_size,num_filters_l1, use_pooling=True)
-    conv_layer_2 = new_conv_layer(conv_layer_1, num_filters_l1, filter_size, num_filters_l2, use_pooling=True)    
+    conv_layer_1 = new_conv_layer(x ,num_channels_x,filter_size,num_filters_l1, name='conv_layer_1')
+    conv_layer_2 = new_conv_layer(conv_layer_1, num_filters_l1, filter_size, num_filters_l2, name='conv_layer_2')    
     
     # Up Sampling
-    conv_layer_3 = new_conv_up_layer(conv_layer_2, num_filters_l2, filter_size, num_filters_l3)
+    conv_layer_3 = new_conv_up_layer(conv_layer_2, num_filters_l2, filter_size, num_filters_l3, name='conv_layer_3')
     # Add conv_layer_1 and conv_layer_3 together (both are (14,14) images)
     if(add_skip_connect):
         print('conv_layer_3 in skip connected. Shape should be: [%s + %s]'%(conv_layer_3.get_shape(), conv_layer_1.get_shape()))
@@ -108,8 +108,7 @@ def build_net(x, add_skip_connect):
         conv_layer_3_shape = conv_layer_3.get_shape().as_list()
         num_filters_l3 = tf.cast(conv_layer_3_shape[3], tf.int32)
     
-    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output)
-    output = tf.nn.relu(output, name='output')
+    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output')
     
     # save an optimizer for the given graph above
     cost = tf.reduce_mean(tf.square(output-x))
@@ -120,14 +119,16 @@ def build_net(x, add_skip_connect):
     print('conv_layer_3: %s'%conv_layer_3.get_shape())
     print('conv_layer_4: %s'%output.get_shape())
 
-    return cost, optimizer, output
+    return cost, optimizer, output, conv_layer_1, conv_layer_2, conv_layer_3
 
 
 
 
 ## Build the autoencoder graph and set up TF variables
 x = tf.placeholder(tf.float32, shape=[None, img_size, img_size, 1], name= 'x')
-cost, optimizer, output = build_net(x, add_skip_connect=add_skip_connect)
+cost, optimizer, output, conv_layer_1, conv_layer_2, conv_layer_3 = build_net(x, add_skip_connect=add_skip_connect)
+
+# Start tensorflow enviorment
 session = tf.Session()
 session.run(tf.global_variables_initializer())
 saver = tf.train.Saver()
