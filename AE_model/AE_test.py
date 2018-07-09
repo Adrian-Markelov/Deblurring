@@ -41,14 +41,16 @@ graph = tf.get_default_graph()
 x = graph.get_tensor_by_name('x:0')
 
 output_layer = graph.get_tensor_by_name('output_layer:0')
-
+conv_layer_1 = graph.get_tensor_by_name('conv_layer_1:0')
+conv_layer_2 = graph.get_tensor_by_name('conv_layer_2:0')
+conv_layer_3 = graph.get_tensor_by_name('conv_layer_3:0')
 
 
 # Run the learned network on testing data
 flat_imgs,_ = data.test.next_batch(testing_batch_size)
 imgs = flat_imgs.reshape((-1,img_size,img_size,1))
 feed_dict = {x: imgs}
-[imgs_recon] = session.run([output], feed_dict)
+[imgs_recon, layer_3_imgs] = session.run([output_layer, conv_layer_3], feed_dict)
 
 
 

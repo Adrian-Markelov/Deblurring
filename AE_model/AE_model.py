@@ -100,7 +100,7 @@ def build_net(x, add_skip_connect):
     conv_layer_2 = new_conv_layer(conv_layer_1, num_filters_l1, filter_size, num_filters_l2, name='conv_layer_2')    
     
     # Up Sampling
-    conv_layer_3 = new_conv_up_layer(conv_layer_2, num_filters_l2, filter_size, num_filters_l3, name='conv_layer_3')
+    conv_layer_3 = new_conv_trans_layer(conv_layer_2, num_filters_l2, filter_size, num_filters_l3, name='conv_layer_3')
     # Add conv_layer_1 and conv_layer_3 together (both are (14,14) images)
     if(add_skip_connect):
         print('conv_layer_3 in skip connected. Shape should be: [%s + %s]'%(conv_layer_3.get_shape(), conv_layer_1.get_shape()))
@@ -108,7 +108,7 @@ def build_net(x, add_skip_connect):
         conv_layer_3_shape = conv_layer_3.get_shape().as_list()
         num_filters_l3 = tf.cast(conv_layer_3_shape[3], tf.int32)
     
-    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output_layer')
+    output = new_conv_trans_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output_layer')
     
     # save an optimizer for the given graph above
     cost = tf.reduce_mean(tf.square(output-x))
