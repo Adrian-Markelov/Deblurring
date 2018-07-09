@@ -13,7 +13,7 @@ plt.ioff()
 testing_batch_size = 64
 training_batch_size = 64
 num_validation_samples = 64
-epochs = 2
+epochs = 10
 plot_rows = 4 # num of test image rows to run and plot
 plot_cols = 6 # ditto (cols must be even)
 add_skip_connect = False # if true will learn ID function in like 2 epochs
