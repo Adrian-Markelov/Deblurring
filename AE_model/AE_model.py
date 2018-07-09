@@ -13,7 +13,7 @@ plt.ioff()
 testing_batch_size = 64
 training_batch_size = 64
 num_validation_samples = 64
-epochs = 10
+epochs = 5
 plot_rows = 4 # num of test image rows to run and plot
 plot_cols = 6 # ditto (cols must be even)
 add_skip_connect = False # if true will learn ID function in like 2 epochs
@@ -108,7 +108,7 @@ def build_net(x, add_skip_connect):
         conv_layer_3_shape = conv_layer_3.get_shape().as_list()
         num_filters_l3 = tf.cast(conv_layer_3_shape[3], tf.int32)
     
-    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output')
+    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output_layer')
     
     # save an optimizer for the given graph above
     cost = tf.reduce_mean(tf.square(output-x))
