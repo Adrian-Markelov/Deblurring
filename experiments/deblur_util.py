@@ -6,6 +6,49 @@ from random import randint
 from PIL import Image
 import pickle
 
+
+# Graph Helper Functions
+def new_weights(shape):
+    return tf.Variable(tf.truncated_normal(shape))
+
+def new_biases(length):
+    return tf.Variable(tf.truncated_normal(shape=[length]))
+
+
+def new_conv_layer(input,num_input_channels,filter_size,num_filters, name, stride=2,use_pooling=True):
+    
+    layer = tf.layers.conv2d(inputs=input, filters=num_filters, kernel_size=filter_size, strides=1, padding='same')
+    if(use_pooling):
+        layer = tf.nn.max_pool(value=layer, ksize=[1,stride,stride,1], strides= [1,stride,stride,1], padding='SAME')
+    layer = tf.nn.relu(layer, name=name)
+    return layer
+
+
+# still might be experimental not sure if backprop works on this
+def new_conv_up_layer(input,num_input_channels,filter_size,num_filters, name):
+    shape = [filter_size, filter_size, num_input_channels, num_filters]
+    
+    input_shape = input.get_shape().as_list()
+    input_img_size = int(input_shape[1])
+    output_img_shape = np.array([input_img_size*2, input_img_size*2], np.int32)
+    
+    upsample_imgs = tf.image.resize_images(images=input, size=output_img_shape,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    
+    layer = tf.layers.conv2d(inputs=upsample_imgs, filters=num_filters, kernel_size=(filter_size,filter_size), padding='same')
+    layer = tf.nn.relu(layer, name=name)
+    return layer
+
+
+# This works only if you use the TF layers module for some reason there is likely something different you 
+# have to model personalized weights for this
+def new_conv_trans_layer(input,num_input_channels,filter_size,num_filters, name, stride=2):
+    layer = tf.layers.conv2d_transpose(inputs=input,filters=num_filters, kernel_size=[2,2], strides=2, name=name)
+    layer = tf.nn.relu(layer, name=name)
+    return layer
+
+
+
+
 def build_new_super_batch(super_batch, patch_idx, batch_size, num_imgs, num_patches_per_img, data_dir, kernels):
 
     super_batch_size = x_super_batch.shape[0] 
