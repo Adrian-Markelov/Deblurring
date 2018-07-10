@@ -181,7 +181,7 @@ def save_all_super_batches(super_batch_size, num_imgs, num_patches_per_img, data
 
     return
 
-
+'''
 super_batch_size = 100000
 num_imgs = 12500
 num_patches_per_img = 40
@@ -192,7 +192,7 @@ kernels = o['kernels']
 
 save_all_super_batches(super_batch_size, num_imgs, num_patches_per_img, training_patches_dir, kernels)
 
-
+'''
 
 
 
