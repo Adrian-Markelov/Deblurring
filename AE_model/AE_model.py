@@ -56,13 +56,7 @@ def new_conv_up_layer(input,num_input_channels,filter_size,num_filters, name):
     input_img_size = int(input_shape[1])
     output_img_shape = np.array([input_img_size*2, input_img_size*2], np.int32)
     
-    #weights = new_weights(shape=shape)
-    #biases = new_biases(length=num_filters)
-    
     upsample_imgs = tf.image.resize_images(images=input, size=output_img_shape,method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    
-    #layer = tf.nn.conv2d(input=upsample_imgs,filter=weights, strides=[1,1,1,1], padding='SAME')
-    #layer += biases
     
     layer = tf.layers.conv2d(inputs=upsample_imgs, filters=num_filters, kernel_size=(filter_size,filter_size), padding='same')
     layer = tf.nn.relu(layer, name=name)
@@ -70,19 +64,8 @@ def new_conv_up_layer(input,num_input_channels,filter_size,num_filters, name):
 
 def new_conv_trans_layer(input,num_input_channels,filter_size,num_filters, name, stride=2):
     layer = tf.layers.conv2d_transpose(inputs=input,filters=num_filters, kernel_size=[2,2], strides=2, name=name)
-    '''input_shape = input.get_shape().as_list()
-    input_img_size = int(input_shape[1])
-    k_shape = [2, 2, num_filters, num_input_channels]
-    output_shape = np.array([training_batch_size, input_img_size*2, input_img_size*2, num_filters], np.int32)
-    
-    weights = new_weights(shape=k_shape)
-    biases = new_biases(length=num_filters)
-    
-    
     # conv2d_transpose: 
     #  output_size = strides * (input_size-1) + kernel_size - 2*padding
-    layer = tf.nn.conv2d_transpose(value=input,filter=weights, output_shape=output_shape, strides=[1,stride,stride,1], padding='SAME')
-    layer += biases'''
     layer = tf.nn.relu(layer, name=name)
     return layer
 
