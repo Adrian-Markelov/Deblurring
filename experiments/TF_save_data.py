@@ -72,15 +72,14 @@ train_addrs = glob.glob(train_path)
 test_addrs = glob.glob(test_path)
 
     
-# Divide the data into 60% train, 20% validation, and 20% test
-train_addrs = train_addrs
+train_addrs = train_addrs[0:10000]
 test_addrs = test_addrs[0:int(0.8*len(test_addrs))]
 val_addrs = test_addrs[int(0.8*len(test_addrs)):]
 
 
-createDataRecord('../../data/TF_data/train.tfrecords', train_addrs, train_kernels_file)
-createDataRecord('../../data/TF_data/test.tfrecords',  test_addrs, test_kernels_file)
-createDataRecord('../../data/TF_data/val.tfrecords',   val_addrs, test_kernels_file)
+createDataRecord('../../data/TF_data_tests/train.tfrecords', train_addrs, train_kernels_file)
+createDataRecord('../../data/TF_data_tests/test.tfrecords',  test_addrs, test_kernels_file)
+createDataRecord('../../data/TF_data_tests/val.tfrecords',   val_addrs, test_kernels_file)
 
 
 

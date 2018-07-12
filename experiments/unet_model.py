@@ -58,10 +58,10 @@ def input_fn(filenames):
 
 
 def train_input_fn():
-    return input_fn(filenames=["../../data/TF_data/train.tfrecords", "../../data/TF_data/test.tfrecords"])
+    return input_fn(filenames=["../../data/TF_data_tests/train.tfrecords", "../../data/TF_data/test.tfrecords"])
 
 def val_input_fn():
-    return input_fn(filenames=["../../data/TF_data/val.tfrecords"])
+    return input_fn(filenames=["../../data/TF_data_tests/val.tfrecords"])
 
 
 
