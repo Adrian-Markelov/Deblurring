@@ -11,195 +11,70 @@ from random import randint
 from PIL import Image
 import sys
 sys.path.insert(0,'./')
-import deblur_util
+from deblur_util *
 
 
-def plot_images(images, cls_true, cls_pred=None):
-    assert len(images) == len(cls_true) == 9
-    
-    # Create figure with 3x3 sub-plots.
-    fig, axes = plt.subplots(3, 3)
-    fig.subplots_adjust(hspace=0.3, wspace=0.3)
-
-    for i, ax in enumerate(axes.flat):
-        # Plot image.
-        ax.imshow(images[i].reshape(img_shape), cmap='binary')
-
-        # Show true and predicted classes.
-        if cls_pred is None:
-            xlabel = "True: {0}".format(cls_true[i])
-        else:
-            xlabel = "True: {0}, Pred: {1}".format(cls_true[i], cls_pred[i])
-
-        # Show the classes as the label on the x-axis.
-        ax.set_xlabel(xlabel)
-        
-        # Remove ticks from the plot.
-        ax.set_xticks([])
-        ax.set_yticks([])
-    
-    # Ensure the plot is shown correctly with multiple plots
-    # in a single Notebook cell.
-    plt.show()
-
-    
-def new_weights(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
-
-def new_biases(length):
-    return tf.Variable(tf.constant(0.05, shape=[length]))
-
-def new_conv_layer(input, num_input_channels, filter_size, num_filters, use_pooling=True, name=None):  
-    shape = [filter_size, filter_size, num_input_channels, num_filters]
-    weights = new_weights(shape=shape)
-    biases = new_biases(length=num_filters)
-    layer = tf.nn.conv2d(input=input, filter=weights,strides=[1, 1, 1, 1], padding='SAME')
-    layer += biases
-    if use_pooling:
-        layer = tf.nn.max_pool(value=layer,
-                               ksize=[1, 2, 2, 1],
-                               strides=[1, 2, 2, 1],
-                               padding='SAME')
-    layer = tf.nn.relu(layer, name=name)
-    return layer, weights
-
-def flatten_layer(layer):
-    layer_shape = layer.get_shape()
-    num_features = layer_shape[1:4].num_elements()
-    layer_flat = tf.reshape(layer, [-1, num_features])
-    return layer_flat, num_features
-
-
-def new_fc_layer(input, num_inputs, num_outputs, use_relu=True, name=None):
-    weights = new_weights(shape=[num_inputs, num_outputs])
-    biases = new_biases(length=num_outputs)
-    if use_relu:
-        layer = tf.matmul(input, weights) + biases
-        layer = tf.nn.relu(layer, name=name)
-    else:
-        layer = tf.add(tf.matmul(input, weights), biases, name=name)
-    return layer
-
-
-
-# Data will come in batches 
-training_patches_dir = '../../data/VOC2012_patches/training'
-testing_patches_dir = '../../data/VOC2012_patches/testing' 
-kernels_file = '../../data/kernels/train_kernels.mat'
-
-o = io.loadmat(kernels_file)
-kernels = o['kernels']
-
-# We know that MNIST images are 28 pixels in each dimension.
-img_size = 105
-
-# Images are stored in one-dimensional arrays of this length.
+kernel_size = 41
+img_size = 128
 img_size_flat = img_size * img_size
 
-# Tuple with height and width of images used to reshape arrays.
-img_shape = (img_size, img_size)
 
-
-# Convolutional Layer 1.
-filter_size1 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters1 = 32         # There are 16 of these filters.
-
-# Convolutional Layer 2.
-filter_size2 = 5          # Convolution filters are 5 x 5 pixels.
-num_filters2 = 64         # There are 36 of these filters.
-
-# Convolutional Layer 3
-filter_size3 = 5
-num_filters3 = 128
+filter_size = 3
 
 
 
-# Fully-connected layer.
-fc_size = img_size_flat   # Number of neurons in fully-connected layer.
+n_channels_x = 1
+# Down-sample
+n_filters_l1 = 32         
+n_filters_l2 = 64         
+n_filters_l3 = 128
+# Up-sample
+n_filters_l4 = 64         
+n_filters_l5 = 32         
+n_output_channels = 1
 
 
-
-# Number of colour channels for the images: 1 channel for gray-scale.
-num_channels = 1
-
-# Size of the output sharp patch
-output_size = img_size_flat
+training_batch_size = 64
+test_batch_size = 64
+val_batch_size = 64
 
 
-super_batch_size = 10000
-training_batch_size = 128
-test_batch_size = 8
-
-
-# Training info
-num_training_patches = 500000
-num_training_imgs = 12500
-num_patches_per_img = 40    
-
-# Testing Data
-num_test_patches = 3000
-num_imgs = 75
-num_patches_per_uniq_img = 40
+# Data info
+n_training_patches = 500000   
+n_test_patches = 2400
+n_valid_patches = 600
 
 
 ## Building the graph for the Neural network with placeholders ONLY
+def build_unet(x, y_true):
+    # Down Sampling
+    conv_layer_1 = new_conv_layer(x ,num_channels_x,filter_size,num_filters_l1, name='conv_layer_1')
+    conv_layer_2 = new_conv_layer(conv_layer_1, num_filters_l1, filter_size, num_filters_l2, name='conv_layer_2')    
+    
+    # Up Sampling
+    conv_layer_3 = new_conv_up_layer(conv_layer_2, num_filters_l2, filter_size, num_filters_l3, name='conv_layer_3')
+    # Add conv_layer_1 and conv_layer_3 together (both are (14,14) images)
+    
+    if(add_skip_connect):
+        print('conv_layer_3 in skip connected. Shape should be: [%s + %s]'%(conv_layer_3.get_shape(), conv_layer_1.get_shape()))
+        conv_layer_3 = tf.concat([conv_layer_3,conv_layer_1],3) # index 3 is the channel index
+        conv_layer_3_shape = conv_layer_3.get_shape().as_list()
+        num_filters_l3 = tf.cast(conv_layer_3_shape[3], tf.int32)
+    
+    output = new_conv_up_layer(conv_layer_3, num_filters_l3, filter_size, num_filters_output, name='output_layer')
+    
+    # save an optimizer for the given graph above
+    cost = tf.reduce_mean(tf.square(output-x))
+    optimizer = tf.train.AdamOptimizer().minimize(cost)
 
-x = tf.placeholder(tf.float32, shape=[training_batch_size, img_size, img_size, num_channels], name='x')
-
-y_flat_true = tf.placeholder(tf.float32, shape=[None, output_size], name='y_flat_true')
-
-
-layer_conv1, weights_conv1 = \
-    new_conv_layer(input=x,
-                   num_input_channels=num_channels,
-                   filter_size=filter_size1,
-                   num_filters=num_filters1,
-                   use_pooling=True)
-
-layer_conv2, weights_conv2 = \
-    new_conv_layer(input=layer_conv1,
-                   num_input_channels=num_filters1,
-                   filter_size=filter_size2,
-                   num_filters=num_filters2,
-                   use_pooling=True)
-
-layer_conv3, weights_conv3 = \
-    new_conv_layer(input=layer_conv2,
-                   num_input_channels=num_filters2,
-                   filter_size=filter_size3,
-                   num_filters=num_filters3,
-                   use_pooling=True)
-
-
-layer_flat, num_features = flatten_layer(layer_conv3)
-
-
-layer_fc1 = new_fc_layer(input=layer_flat,
-                         num_inputs=num_features,
-                         num_outputs=fc_size,
-                         use_relu=True)
-
-layer_fc2 = new_fc_layer(input=layer_fc1,
-                         num_inputs=fc_size,
-                         num_outputs=fc_size,
-                         use_relu=True)
-
-output = new_fc_layer(input=layer_fc2,
-                         num_inputs=fc_size,
-                         num_outputs=output_size,
-                         use_relu=False,
-                         name='output_layer')
-y_flat_pred = output
-
-cost = tf.reduce_mean(tf.square(y_flat_pred-y_flat_true))
-optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+    cost = tf.reduce_mean(tf.square(y_pred-y_true))
+    optimizer = tf.train.AdamOptimizer().minimize(cost)
+    return cost,optimizer, output
 
 
 
 
-def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem=False):
-
-    # Start-time used for printing time-usage below.
+def train(session, optimizer, cost, num_iterations, data):
     start_time = time.time()
     
     for i in range(num_iterations):
@@ -209,60 +84,23 @@ def train(session, optimizer, cost, num_iterations, kernels, data=None, load_mem
         for batch_idx in range(int(num_training_patches/training_batch_size)):
             if(i%5==0):
                 print('batch idx: %d'%batch_idx)
-            batch_start_time = time.time()
-            super_batch, patch_idx, x_batch, y_flat_true_batch, k_batch = \
-                                                                deblur_util.get_next_batch(super_batch, patch_idx, 
-                                                                                           training_batch_size, num_training_imgs, 
-                                                                                           num_patches_per_img, training_patches_dir, kernels)
-            batch_end_time = time.time()
-            batch_time_diff = batch_end_time-batch_start_time
-            print('time diff: %d secs'%batch_time_diff)
+            
+            x_batch, y_true_batch, k_batch = get_next_batch(patch_data, patch_idx, batch_size)
             feed_dict_train = {x: x_batch,
-                               y_flat_true: y_flat_true_batch}
+                               y_true: y_true_batch}
             
             session.run(optimizer, feed_dict=feed_dict_train)
 
-        # Print status every 100 iterations.
         if i % 10 == 0:
-            # Calculate the accuracy on the training-set.
             cost_val = session.run(cost, feed_dict=feed_dict_train)
-
-            # Message for printing.
             msg = "Optimization Iteration: {0:>6}, Training Cost: {1:>6.1%}"
-
-            # Print it.
             print(msg.format(i, cost_val))
 
-
-    # Ending time.
     end_time = time.time()
-
-    # Print the time-usage.
     print("Time usage: " + str(timedelta(seconds=int(round(end_time-start_time)))))
 
 
-def test(session, kernels):
 
-    # The starting index for the next batch is denoted i.
-    patch_idx = 0
-    
-    patch_sharp_pred = np.zeros((num_test_patches, img_size_flat))
-    
-    while patch_idx < num_test_patches:
-
-        # Get the images from the test-set between index i and j.
-        patches = deblur_util.get_next_batch(patch_idx, testing_batch_size, num_testing_imgs, num_patches_per_img, tresting_patches_dir, kernels) #data.test.images[i:j, :]
-
-        # Create a feed-dict with these images and labels.
-        feed_dict = {x: patches}
-
-        patch_idx_end = min(patch_idx+testing_batch_size, num_test_patches)
-        # Calculate the predicted class using TensorFlow.
-        patch_sharp_pred[patch_idx:patch_idx_end, :] = session.run(y_flat_pred, feed_dict=feed_dict)
-
-        # Set the start-index for the next batch to the
-        # end-index of the current batch.
-        patch_idx = patch_idx_end
 
 
 
@@ -272,9 +110,13 @@ session.run(tf.global_variables_initializer())
 saver = tf.train.Saver()
 
 
-train(session, optimizer, cost, num_iterations=50, kernels=kernels)
-#test(session, kernels)
 
+x = tf.placeholder(tf.float32, shape=[training_batch_size, img_size, img_size, num_channels], name='x')
+y_true = tf.placeholder(tf.float32, shape=[None, output_size], name='y_flat_true')
+
+cost, optimizer, output = build_unet(x, y_true)
+
+train(session, optimizer, cost, num_iterations=50, kernels=kernels)
 
 save_path = saver.save(session, "../../TF_models/cnn_model_4/model_4")
 
