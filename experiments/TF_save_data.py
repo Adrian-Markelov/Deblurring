@@ -73,9 +73,9 @@ test_addrs = glob.glob(test_path)
 
     
 # Divide the data into 60% train, 20% validation, and 20% test
-train_addrs = train_addrs[0:10]
-test_addrs = test_addrs[0:10]#test_addrs[0:int(0.8*len(test_addrs))]
-val_addrs = test_addrs[10:20]#test_addrs[int(0.8*len(test_addrs)):]
+train_addrs = train_addrs
+test_addrs = test_addrs[0:int(0.8*len(test_addrs))]
+val_addrs = test_addrs[int(0.8*len(test_addrs)):]
 
 
 createDataRecord('../../data/TF_data/train.tfrecords', train_addrs, train_kernels_file)

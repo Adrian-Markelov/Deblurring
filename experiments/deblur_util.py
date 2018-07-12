@@ -226,7 +226,7 @@ def save_all_data(num_patches, num_imgs, num_patches_per_img, data_dir, kernels)
             pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         
-
+'''
 num_patches_training = 5#500000
 num_imgs_training = 12500
 num_patches_per_img_training = 40
@@ -244,7 +244,7 @@ kernels = o['kernels']
 
 save_all_data(num_patches_training, num_imgs_training, num_patches_per_img_training, training_patches_dir, kernels)
 save_all_data(num_patches_testing,  num_imgs_testing,  num_patches_per_img_testing,  testing_patches_dir,  kernels)
-
+'''
 
 
 
