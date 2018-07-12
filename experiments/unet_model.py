@@ -1,4 +1,4 @@
-
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import sys
 import numpy as np
@@ -8,6 +8,23 @@ from scipy import io
 from random import randint
 from PIL import Image
 import pickle
+
+sys.path.insert(0,'./')
+from deblur_util *
+
+kernel_size = 41
+img_size = 128
+img_size_flat = img_size * img_size
+
+'''training_batch_size = 64
+test_batch_size = 64
+val_batch_size = 64
+
+
+# Data info
+n_training_patches = 500000   
+n_test_patches = 2400
+n_valid_patches = 600'''
 
 
 def parser(record):
@@ -23,7 +40,7 @@ def parser(record):
     img_b = tf.cast(img_b, tf.float32)
     img_s = tf.cast(img_s, tf.float32)
     k = tf.cast(k, tf.float32)
-    return img_b, img_s, k
+    return img_b, img_s
 
 
 def input_fn(filenames):
@@ -32,7 +49,7 @@ def input_fn(filenames):
       tf.contrib.data.shuffle_and_repeat(1024, 1)
   )'''
   dataset = dataset.apply(
-      tf.contrib.data.map_and_batch(parser, 32)
+      tf.contrib.data.map_and_batch(parser, batch_size=4)
   )
   #dataset = dataset.map(parser, num_parallel_calls=12)
   #dataset = dataset.batch(batch_size=1000)
@@ -48,73 +65,54 @@ def val_input_fn():
 
 
 
-
-
 def model_fn(img_b, img_s, mode, params):
-    net = features["image"]
+    
+    filter_size = 3
 
-    net = tf.identity(net, name="input_tensor")
+    n_channels_x = 1 # size = 128
+    # Down-sample
+    n_filters_l1 = 32  # size = 64      
+    n_filters_l2 = 64  # size = 32       
+    n_filters_l3 = 128 # size = 16
+    # Up-sample
+    n_filters_l4 = 64 # size = 32        
+    n_filters_l5 = 32  # size = 64       
+    n_output_channels = 1 # size = 128
+
+    net = tf.identity(img_b, name="input_tensor")
     
     net = tf.reshape(net, [-1, 128, 128, 1])    
 
     net = tf.identity(net, name="input_tensor_after")
 
-    net = tf.layers.conv2d(inputs=net, name='layer_conv1',
-                           filters=32, kernel_size=3,
-                           padding='same', activation=tf.nn.relu)
-    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)
-
-    net = tf.layers.conv2d(inputs=net, name='layer_conv2',
-                           filters=64, kernel_size=3,
-                           padding='same', activation=tf.nn.relu)
-    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)  
-
-    net = tf.layers.conv2d(inputs=net, name='layer_conv3',
-                           filters=64, kernel_size=3,
-                           padding='same', activation=tf.nn.relu)
-    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)    
-
-    net = tf.contrib.layers.flatten(net)
-
-    net = tf.layers.dense(inputs=net, name='layer_fc1',
-                        units=128, activation=tf.nn.relu)  
+    # Down-sample: 128,64,32,16 <-> 32,64,128
+    conv_layer_1 = new_conv_layer(x ,           n_channels_x,   filter_size, n_filters_l1, name='conv_layer_1')
+    conv_layer_2 = new_conv_layer(conv_layer_1, n_filters_l1, filter_size, num_filters_l2, name='conv_layer_2')
+    conv_layer_3 = new_conv_layer(conv_layer_2, n_filters_l2, filter_size, num_filters_l3, name='conv_layer_3')
     
-    net = tf.layers.dropout(net, rate=0.5, noise_shape=None, 
-                        seed=None, training=(mode == tf.estimator.ModeKeys.TRAIN))
-    
-    net = tf.layers.dense(inputs=net, name='layer_fc_2',
-                        units=num_classes)
+    # Up-sample
+    conv_layer_4 = new_conv_trans_layer(conv_layer_3, n_filters_l3, filter_size, num_filters_l4, name='conv_layer_4')
+    conv_layer_2_4 = tf.concat([conv_layer_2, conv_layer_4], 3)
+    conv_layer_5 = new_conv_trans_layer(conv_layer_2_4, n_filters_l2+n_filters_l4, filter_size, num_filters_l5, name='conv_layer_4')
+    conv_layer_1_5 = tf.concat([conv_layer_1, conv_layer_5], 3)
+    output_layer = new_conv_trans_layer(conv_layer_1_5, n_filters_l1+n_filters_l5, filter_size, n_output_channels, name='output_layer')
 
-    logits = net
-    y_pred = tf.nn.softmax(logits=logits)
-
-    y_pred = tf.identity(y_pred, name="output_pred")
-
-    y_pred_cls = tf.argmax(y_pred, axis=1)
-
-    y_pred_cls = tf.identity(y_pred_cls, name="output_cls")
-
+    img_s_pred = output_layer
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         spec = tf.estimator.EstimatorSpec(mode=mode,
-                                          predictions=y_pred_cls)
+                                          predictions=img_s_pred)
     else:
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels,
-                                                                       logits=logits)
-        loss = tf.reduce_mean(cross_entropy)
+        loss = tf.reduce_mean(tf.square(img_s_pred-img_s))
 
         optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
         train_op = optimizer.minimize(
             loss=loss, global_step=tf.train.get_global_step())
-        metrics = {
-            "accuracy": tf.metrics.accuracy(labels, y_pred_cls)
-        }
 
         spec = tf.estimator.EstimatorSpec(
             mode=mode,
             loss=loss,
-            train_op=train_op,
-            eval_metric_ops=metrics)
+            train_op=train_op)
         
     return spec
 
@@ -123,11 +121,10 @@ model = tf.estimator.Estimator(model_fn=model_fn,
                                model_dir="./deblur_model/")
 
 count = 0
-while (count < 100000):
-    model.train(input_fn=train_input_fn, steps=1000)
+while (count < 10):
+    model.train(input_fn=train_input_fn, steps=1)
     result = model.evaluate(input_fn=val_input_fn)
     print(result)
-    print("Classification accuracy: {0:.2%}".format(result["accuracy"]))
     sys.stdout.flush()
     count = count + 1
 
