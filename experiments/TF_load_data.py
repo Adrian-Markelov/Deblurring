@@ -41,25 +41,38 @@ def input_fn(filenames):
 
 
 def train_input_fn():
-    return input_fn(filenames=["train.tfrecords", "test.tfrecords"])
+    return input_fn(filenames=["../../data/TF_data/train.tfrecords", "../../data/TF_data/test.tfrecords"])
 
-def train_input_fn()():
-    return input_fn(filenames=["val.tfrecords"])
-
-
+def val_input_fn():
+    return input_fn(filenames=["../../data/TF_data/val.tfrecords"])
 
 
 
 
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
 
+
+#sess = tf.Session()
+#sess.run(tf.global_variables_initializer())
 
 train_dataset = train_input_fn()
-test_dataset = train_input_fn()
+val_dataset = val_input_fn()
+
+
+print('printing out dataset type .......................')
+print(train_dataset)
+print(val_dataset)
 
 
 
+# create a one-shot iterator
+iterator = val_dataset.make_one_shot_iterator()
+# extract an element
+next_element = iterator.get_next()
+
+with tf.Session() as sess:
+    for i in range(10):
+        val = sess.run(next_element)
+        print(val)
 
 
 
