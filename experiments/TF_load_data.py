@@ -17,9 +17,9 @@ def parser(record):
         "k_raw": tf.FixedLenFeature([], tf.string) 
     }
     parsed = tf.parse_single_example(record, keys_to_features)
-    img_b = tf.decode_raw(parsed["img_b_raw"], tf.uint8) #<<<------ THIS IS PROB not uint8
-    img_s = tf.decode_raw(parsed["img_s_raw"], tf.uint8) #<<<------ THIS IS PROB not uint8
-    k = tf.decode_raw(parsed["k_raw"], tf.uint8) #<<<------ THIS IS PROB not uint8
+    img_b = tf.decode_raw(parsed["img_b_raw"], tf.uint8) 
+    img_s = tf.decode_raw(parsed["img_s_raw"], tf.uint8) 
+    k = tf.decode_raw(parsed["k_raw"], tf.uint8) 
     img_b = tf.cast(img_b, tf.float32)
     img_s = tf.cast(img_s, tf.float32)
     k = tf.cast(k, tf.float32)
@@ -50,29 +50,90 @@ def val_input_fn():
 
 
 
+def model_fn(img_b, img_s, mode, params):
+    net = features["image"]
 
-#sess = tf.Session()
-#sess.run(tf.global_variables_initializer())
+    net = tf.identity(net, name="input_tensor")
+    
+    net = tf.reshape(net, [-1, 128, 128, 1])    
 
-train_dataset = train_input_fn()
-val_dataset = val_input_fn()
+    net = tf.identity(net, name="input_tensor_after")
+
+    net = tf.layers.conv2d(inputs=net, name='layer_conv1',
+                           filters=32, kernel_size=3,
+                           padding='same', activation=tf.nn.relu)
+    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)
+
+    net = tf.layers.conv2d(inputs=net, name='layer_conv2',
+                           filters=64, kernel_size=3,
+                           padding='same', activation=tf.nn.relu)
+    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)  
+
+    net = tf.layers.conv2d(inputs=net, name='layer_conv3',
+                           filters=64, kernel_size=3,
+                           padding='same', activation=tf.nn.relu)
+    net = tf.layers.max_pooling2d(inputs=net, pool_size=2, strides=2)    
+
+    net = tf.contrib.layers.flatten(net)
+
+    net = tf.layers.dense(inputs=net, name='layer_fc1',
+                        units=128, activation=tf.nn.relu)  
+    
+    net = tf.layers.dropout(net, rate=0.5, noise_shape=None, 
+                        seed=None, training=(mode == tf.estimator.ModeKeys.TRAIN))
+    
+    net = tf.layers.dense(inputs=net, name='layer_fc_2',
+                        units=num_classes)
+
+    logits = net
+    y_pred = tf.nn.softmax(logits=logits)
+
+    y_pred = tf.identity(y_pred, name="output_pred")
+
+    y_pred_cls = tf.argmax(y_pred, axis=1)
+
+    y_pred_cls = tf.identity(y_pred_cls, name="output_cls")
 
 
-print('printing out dataset type .......................')
-print(train_dataset)
-print(val_dataset)
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        spec = tf.estimator.EstimatorSpec(mode=mode,
+                                          predictions=y_pred_cls)
+    else:
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels,
+                                                                       logits=logits)
+        loss = tf.reduce_mean(cross_entropy)
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
+        train_op = optimizer.minimize(
+            loss=loss, global_step=tf.train.get_global_step())
+        metrics = {
+            "accuracy": tf.metrics.accuracy(labels, y_pred_cls)
+        }
+
+        spec = tf.estimator.EstimatorSpec(
+            mode=mode,
+            loss=loss,
+            train_op=train_op,
+            eval_metric_ops=metrics)
+        
+    return spec
+
+model = tf.estimator.Estimator(model_fn=model_fn,
+                               params={"learning_rate": 1e-4},
+                               model_dir="./deblur_model/")
+
+count = 0
+while (count < 100000):
+    model.train(input_fn=train_input_fn, steps=1000)
+    result = model.evaluate(input_fn=val_input_fn)
+    print(result)
+    print("Classification accuracy: {0:.2%}".format(result["accuracy"]))
+    sys.stdout.flush()
+    count = count + 1
 
 
 
-# create a one-shot iterator
-iterator = val_dataset.make_one_shot_iterator()
-# extract an element
-next_element = iterator.get_next()
 
-with tf.Session() as sess:
-    for i in range(10):
-        val = sess.run(next_element)
-        print(val)
 
 
 
