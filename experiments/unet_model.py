@@ -39,40 +39,72 @@ def parser(record):
     print('parsed')
     print(parsed['img_b_raw'])
     
-    img_b = tf.decode_raw(parsed["img_b_raw"], tf.uint8) 
-    img_s = tf.decode_raw(parsed["img_s_raw"], tf.uint8)
-    k = tf.decode_raw(parsed["k_raw"], tf.uint8) 
+    img_b = tf.decode_raw(parsed["img_b_raw"], tf.float64) 
+    img_s = tf.decode_raw(parsed["img_s_raw"], tf.float64)
+    k =     tf.decode_raw(parsed["k_raw"], tf.float64) 
     img_b = tf.cast(img_b, tf.float32)
     img_s = tf.cast(img_s, tf.float32)
-    k = tf.cast(k, tf.float32)
-    return {"image_data": img_b}, img_s
+    k =     tf.cast(k, tf.float32)
+    return img_b, img_s
 
 
-def input_fn(filenames):
-  dataset = tf.data.TFRecordDataset(filenames=filenames, num_parallel_reads=40)
-  '''dataset = dataset.apply(
-      tf.contrib.data.shuffle_and_repeat(1024, 1)
-  )'''
-  dataset = dataset.apply(
-      tf.contrib.data.map_and_batch(parser, batch_size=64)
-  )
-  #dataset = dataset.map(parser, num_parallel_calls=12)
-  #dataset = dataset.batch(batch_size=4)
-  dataset = dataset.prefetch(buffer_size=2)
-  return dataset
+def input_fn(filenames, train, batch_size=64, buffer_size=2048):
+    dataset = tf.data.TFRecordDataset(filenames=filenames, num_parallel_reads=40)
+    dataset = dataset.map(parser, num_parallel_calls=12)
+    dataset = dataset.batch(batch_size=batch_size)
+    dataset = dataset.prefetch(buffer_size=2)
+    
+    num_repeats = None
+    
+    if train:
+        # If training then read a buffer of the given size and
+        # randomly shuffle it.
+        dataset = dataset.shuffle(buffer_size=buffer_size)
+
+        # Allow infinite reading of the data.
+        num_repeat = None
+    else:
+        # If testing then don't shuffle the data.
+        
+        # Only go through the data once.
+        num_repeat = 1
+
+    # Repeat the dataset the given number of times.
+    dataset = dataset.repeat(num_repeat)
+    
+    # Get a batch of data with the given size.
+    dataset = dataset.batch(batch_size)
+
+    # Create an iterator for the dataset and the above modifications.
+    iterator = dataset.make_one_shot_iterator()
+
+    # Get the next batch of images and labels.
+    images_batch, labels_batch = iterator.get_next()
+
+    # The input-function must return a dict wrapping the images.
+    x = {'image': images_batch}
+    y = labels_batch
+
+    return x, y
+    
+    
+    return dataset
 
 
 def train_input_fn():
-    return input_fn(filenames=["../../data/TF_data_tests/train.tfrecords", "../../data/TF_data/test.tfrecords"])
+    return input_fn(filenames=["../../data/TF_data_tests/train.tfrecords"],train=True)
+
+def test_input_fn():
+    return input_fn(filenames=["../../data/TF_data_tests/test.tfrecords"],train=False)
 
 def val_input_fn():
-    return input_fn(filenames=["../../data/TF_data_tests/val.tfrecords"])
+    return input_fn(filenames=["../../data/TF_data_tests/val.tfrecords"],train=False)
 
 
 
 def model_fn(features, labels, mode, params):
 
-    img_b = features['image_data']
+    img_b = features['image']
     img_s = labels
     
     filter_size = 3
@@ -108,7 +140,7 @@ def model_fn(features, labels, mode, params):
     img_s_pred = output_layer
 
 
-    #print('img_s_pred: %s'%img_s_pred.get_shape())
+    print('img_s_pred: %s'%img_s_pred.get_shape())
     #print('img_s: %s'%img_s.get_shape())
 
 
@@ -129,9 +161,19 @@ def model_fn(features, labels, mode, params):
         
     return spec
 
+'''
+some_images = get_images()
+
+predict_input_fn = tf.estimator.inputs.numpy_input_fn(
+    x={"image": some_images.astype(np.float32)},
+    num_epochs=1,
+    shuffle=False)
+'''
 model = tf.estimator.Estimator(model_fn=model_fn,
                                params={"learning_rate": 1e-4},
                                model_dir="./deblur_model/")
+
+
 
 count = 0
 while (count < 1):
@@ -150,11 +192,8 @@ print(val_dataset)
 
 
 #pred_results = model.predict(input_fn=val_input_fn, as_iterable=True)
-pred_results = model.predict(input_fn=val_input_fn)
-for p in pred_results:
-    a = p
+pred_results = model.predict(input_fn=test_input_fn)
 
-print(a)
 
 
 print('*********************************************************************************')
