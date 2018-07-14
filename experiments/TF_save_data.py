@@ -45,14 +45,15 @@ def createDataRecord(out_filename, addrs, kernels_file):
         # Load the image
         img_s, img_b, k = load_image(addrs[i], kernels)
 
-        if img_s is None:
-            continue
-
+        print('img_s: %s'%img_s.dtype)
+        print('img_b: %s'%img_b.dtype)
+        print('k: %s'%k.dtype)
+        
         # Create a feature
         feature = {
             'img_s_raw': _bytes_feature(img_s.tostring()),
             'img_b_raw': _bytes_feature(img_b.tostring()),
-            'k_raw': _bytes_feature(k.tostring())
+            'k_raw':     _bytes_feature(k.tostring())
             
         }
         # Create an example protocol buffer
@@ -72,14 +73,14 @@ train_addrs = glob.glob(train_path)
 test_addrs = glob.glob(test_path)
 
     
-train_addrs = train_addrs[0:10000]
-test_addrs = test_addrs[0:int(0.8*len(test_addrs))]
-val_addrs = test_addrs[int(0.8*len(test_addrs)):]
+train_addrs = train_addrs[0:1000]
+test_addrs = test_addrs[0:int(0.2*len(test_addrs))]
+val_addrs = test_addrs[int(0.2*len(test_addrs)):int(0.4*len(test_addrs))]
 
 
-createDataRecord('../../data/TF_data_tests/train.tfrecords', train_addrs, train_kernels_file)
-createDataRecord('../../data/TF_data_tests/test.tfrecords',  test_addrs, test_kernels_file)
-createDataRecord('../../data/TF_data_tests/val.tfrecords',   val_addrs, test_kernels_file)
+createDataRecord('../../data/TF_data_quick/train.tfrecords', train_addrs, train_kernels_file)
+createDataRecord('../../data/TF_data_quick/test.tfrecords',  test_addrs, test_kernels_file)
+createDataRecord('../../data/TF_data_quick/val.tfrecords',   val_addrs, test_kernels_file)
 
 
 
