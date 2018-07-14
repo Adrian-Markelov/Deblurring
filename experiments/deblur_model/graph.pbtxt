@@ -456,7 +456,7 @@ node {
             size: 2
           }
         }
-        string_val: "../../data/TF_data/train.tfrecords"
+        string_val: "../../data/TF_data_tests/train.tfrecords"
         string_val: "../../data/TF_data/test.tfrecords"
       }
     }
@@ -779,6 +779,37 @@ node {
   }
 }
 node {
+  name: "buffer_size"
+  op: "Const"
+  device: "/device:CPU:0"
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "dtype"
+    value {
+      type: DT_INT64
+    }
+  }
+  attr {
+    key: "value"
+    value {
+      tensor {
+        dtype: DT_INT64
+        tensor_shape {
+        }
+        int64_val: 2
+      }
+    }
+  }
+}
+node {
   name: "Iterator"
   op: "Iterator"
   attr {
@@ -1006,9 +1037,64 @@ node {
   }
 }
 node {
+  name: "PrefetchDataset"
+  op: "PrefetchDataset"
+  input: "MapAndBatchDataset"
+  input: "buffer_size"
+  attr {
+    key: "_class"
+    value {
+      list {
+        s: "loc:@Iterator"
+      }
+    }
+  }
+  attr {
+    key: "_output_shapes"
+    value {
+      list {
+        shape {
+        }
+      }
+    }
+  }
+  attr {
+    key: "output_shapes"
+    value {
+      list {
+        shape {
+          dim {
+            size: -1
+          }
+          dim {
+            size: -1
+          }
+        }
+        shape {
+          dim {
+            size: -1
+          }
+          dim {
+            size: -1
+          }
+        }
+      }
+    }
+  }
+  attr {
+    key: "output_types"
+    value {
+      list {
+        type: DT_FLOAT
+        type: DT_FLOAT
+      }
+    }
+  }
+}
+node {
   name: "MakeIterator"
   op: "MakeIterator"
-  input: "MapAndBatchDataset"
+  input: "PrefetchDataset"
   input: "Iterator"
   attr {
     key: "_class"
@@ -24976,7 +25062,7 @@ node {
         dtype: DT_STRING
         tensor_shape {
         }
-        string_val: "_temp_125cefe32f8c48c1a25242524c5c62e5/part"
+        string_val: "_temp_9cb5df8dd6ef4a16b53a1ce452b476ce/part"
       }
     }
   }

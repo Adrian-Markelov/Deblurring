@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-import tensorflow as tf
 import sys
 import numpy as np
 
@@ -28,19 +26,26 @@ n_valid_patches = 600'''
 
 
 def parser(record):
-    keys_to_features = {
-        "img_b_raw": tf.FixedLenFeature([], tf.string),
+    print('record')
+    print(record)
+    keys_to_features = { 
         "img_s_raw": tf.FixedLenFeature([], tf.string),
-        "k_raw": tf.FixedLenFeature([], tf.string)
+        "img_b_raw": tf.FixedLenFeature([], tf.string),
+        "k_raw"    : tf.FixedLenFeature([], tf.string)
          }
+    
     parsed = tf.parse_single_example(record, keys_to_features)
+    
+    print('parsed')
+    print(parsed['img_b_raw'])
+    
     img_b = tf.decode_raw(parsed["img_b_raw"], tf.uint8) 
-    img_s = tf.decode_raw(parsed["img_s_raw"], tf.uint8) 
+    img_s = tf.decode_raw(parsed["img_s_raw"], tf.uint8)
     k = tf.decode_raw(parsed["k_raw"], tf.uint8) 
     img_b = tf.cast(img_b, tf.float32)
     img_s = tf.cast(img_s, tf.float32)
     k = tf.cast(k, tf.float32)
-    return img_b, img_s
+    return {"image_data": img_b}, img_s
 
 
 def input_fn(filenames):
@@ -53,7 +58,7 @@ def input_fn(filenames):
   )
   #dataset = dataset.map(parser, num_parallel_calls=12)
   #dataset = dataset.batch(batch_size=4)
-  #dataset = dataset.prefetch(buffer_size=2)
+  dataset = dataset.prefetch(buffer_size=2)
   return dataset
 
 
@@ -67,7 +72,7 @@ def val_input_fn():
 
 def model_fn(features, labels, mode, params):
 
-    img_b = features
+    img_b = features['image_data']
     img_s = labels
     
     filter_size = 3
@@ -129,23 +134,43 @@ model = tf.estimator.Estimator(model_fn=model_fn,
                                model_dir="./deblur_model/")
 
 count = 0
-while (count < 10):
+while (count < 1):
     model.train(input_fn=train_input_fn)#, steps=1000)# steps = num_batches
     result = model.evaluate(input_fn=val_input_fn)
+    print('epoch: %d'%count)
     print('loss: %d'%result['loss'])
     sys.stdout.flush()
     count = count + 1
 
 
 
+val_dataset = val_input_fn()
+
+print(val_dataset)
+
+
+#pred_results = model.predict(input_fn=val_input_fn, as_iterable=True)
 pred_results = model.predict(input_fn=val_input_fn)
+for p in pred_results:
+    a = p
 
+print(a)
+
+
+print('*********************************************************************************')
+print('********************* PRINTING OUT PREDICTIONS************************')
+print('*********************************************************************************')
 print(pred_results)
+print(str(list(pred_results)))
 
-
-
-
-
+'''count = 0
+for i in pred_results:
+    print('count: %d'%count)
+    print('Result Sample: ')
+    print(type(i))
+    print(i)
+    count += 1
+'''
 
 
 
