@@ -45,9 +45,9 @@ def createDataRecord(out_filename, addrs, kernels_file):
         # Load the image
         img_s, img_b, k = load_image(addrs[i], kernels)
 
-        print('img_s: %s'%img_s.dtype)
-        print('img_b: %s'%img_b.dtype)
-        print('k: %s'%k.dtype)
+        #print('img_s: %s  %s'%(img_s.dtype, img_s.shape))
+        #print('img_b: %s  %s'%(img_b.dtype, img_b.shape))
+        #print('k: %s  %s'%(k.dtype, k.shape))
         
         # Create a feature
         feature = {
