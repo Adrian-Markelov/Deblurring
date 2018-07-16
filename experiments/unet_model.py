@@ -7,6 +7,10 @@ from random import randint
 from PIL import Image
 import pickle
 
+import pdb
+import traceback
+
+
 sys.path.insert(0,'./')
 from deblur_util import *
 
@@ -48,11 +52,12 @@ def parser(record):
     return img_b, img_s
 
 
-def input_fn(filenames, train, batch_size=64, buffer_size=2048):
+def input_fn(filenames, train, batch_size=64, buffer_size=32):
+    #pdb.set_trace()
     dataset = tf.data.TFRecordDataset(filenames=filenames, num_parallel_reads=40)
     dataset = dataset.map(parser, num_parallel_calls=12)
     dataset = dataset.batch(batch_size=batch_size)
-    dataset = dataset.prefetch(buffer_size=2)
+    #dataset = dataset.prefetch(buffer_size=2)
     
     num_repeats = None
     
@@ -72,14 +77,15 @@ def input_fn(filenames, train, batch_size=64, buffer_size=2048):
     # Repeat the dataset the given number of times.
     dataset = dataset.repeat(num_repeat)
     
-    # Get a batch of data with the given size.
-    dataset = dataset.batch(batch_size)
-
     # Create an iterator for the dataset and the above modifications.
     iterator = dataset.make_one_shot_iterator()
 
     # Get the next batch of images and labels.
     images_batch, labels_batch = iterator.get_next()
+
+    print('-----------------input_fn-------------------')
+    print(type(images_batch))
+    print('images_batch: %s'%images_batch.shape)
 
     # The input-function must return a dict wrapping the images.
     x = {'image': images_batch}
@@ -92,31 +98,38 @@ def input_fn(filenames, train, batch_size=64, buffer_size=2048):
 
 
 def train_input_fn():
-    return input_fn(filenames=["../../data/TF_data_tests/train.tfrecords"],train=True)
+    return input_fn(filenames=["../../data/TF_data_quick/train.tfrecords"],train=True)
 
 def test_input_fn():
-    return input_fn(filenames=["../../data/TF_data_tests/test.tfrecords"],train=False)
+    return input_fn(filenames=["../../data/TF_data_quick/test.tfrecords"],train=False)
 
 def val_input_fn():
-    return input_fn(filenames=["../../data/TF_data_tests/val.tfrecords"],train=False)
+    return input_fn(filenames=["../../data/TF_data_quick/val.tfrecords"],train=False)
 
 
 
 def model_fn(features, labels, mode, params):
-
+    #pdb.set_trace()
     img_b = features['image']
     img_s = labels
     
+    print('--------------------------------------------------------------------------------')
+    print('img_b: %s'%img_b.shape)
+    print('img_s: %s'%img_s.shape)
+    print(type(img_b))
+    print(type(img_s))
+    print('--------------------------------------------------------------------------------')
+
     filter_size = 3
 
     n_channels_x = 1 # size = 128
     # Down-sample
-    n_filters_l1 = 32  # size = 64      
-    n_filters_l2 = 64  # size = 32       
-    n_filters_l3 = 128 # size = 16
+    n_filters_l1 = 8  # size = 64      
+    n_filters_l2 = 16  # size = 32       
+    n_filters_l3 = 32 # size = 16
     # Up-sample
-    n_filters_l4 = 64 # size = 32        
-    n_filters_l5 = 32  # size = 64       
+    n_filters_l4 = 16 # size = 32        
+    n_filters_l5 = 8  # size = 64       
     n_output_channels = 1 # size = 128
 
     img_s = tf.reshape(img_s, [-1,128,128,1])
@@ -126,7 +139,7 @@ def model_fn(features, labels, mode, params):
     img_b = tf.identity(img_b, name="input_tensor_after")
 
     # Down-sample: 128,64,32,16 <-> 32,64,128
-    conv_layer_1 = new_conv_layer(img_b,          n_channels_x, filter_size, n_filters_l1, name='conv_layer_1')
+    conv_layer_1 = new_conv_layer(img_b,        n_channels_x, filter_size, n_filters_l1, name='conv_layer_1')
     conv_layer_2 = new_conv_layer(conv_layer_1, n_filters_l1, filter_size, n_filters_l2, name='conv_layer_2')
     conv_layer_3 = new_conv_layer(conv_layer_2, n_filters_l2, filter_size, n_filters_l3, name='conv_layer_3')
     
@@ -139,8 +152,16 @@ def model_fn(features, labels, mode, params):
 
     img_s_pred = output_layer
 
-
+    print('---------------END OF MODEL FUNC-----------------')
+    print('conv_layer_1: %s'%conv_layer_1.get_shape())
+    print('conv_layer_2: %s'%conv_layer_2.get_shape())
+    print('conv_layer_3: %s'%conv_layer_3.get_shape())
+    print('conv_layer_4: %s'%conv_layer_4.get_shape())
+    print('conv_layer_2_4: %s'%conv_layer_2_4.get_shape())
+    print('conv_layer_5: %s'%conv_layer_5.get_shape())
+    print('conv_layer_1_5: %s'%conv_layer_1_5.get_shape())
     print('img_s_pred: %s'%img_s_pred.get_shape())
+    
     #print('img_s: %s'%img_s.get_shape())
 
 
@@ -177,6 +198,7 @@ model = tf.estimator.Estimator(model_fn=model_fn,
 
 count = 0
 while (count < 1):
+    
     model.train(input_fn=train_input_fn)#, steps=1000)# steps = num_batches
     result = model.evaluate(input_fn=val_input_fn)
     print('epoch: %d'%count)

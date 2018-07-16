@@ -73,7 +73,7 @@ train_addrs = glob.glob(train_path)
 test_addrs = glob.glob(test_path)
 
     
-train_addrs = train_addrs[0:1000]
+train_addrs = train_addrs[0:100]
 test_addrs = test_addrs[0:int(0.2*len(test_addrs))]
 val_addrs = test_addrs[int(0.2*len(test_addrs)):int(0.4*len(test_addrs))]
 
