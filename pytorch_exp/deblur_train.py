@@ -40,7 +40,9 @@ class VOC_Dataset(torch.utils.data.Dataset):
             kernels_file = self.kernels_path + 'train_kernels.mat'
             o = io.loadmat(kernels_file)
             self.kernels = o['kernels']
-        elif(MODE== 'test):
+            print(len(self.addrs_s))
+
+        elif(MODE== 'test'):
             self.addrs_s = glob.glob(self.path+'testing_sharp/*.jpg')
             self.addrs_b = glob.glob(self.path+'testing_blury/*.jpg')
             kernels_file = self.kernels_path + 'test_kernels.mat'
@@ -64,10 +66,19 @@ class VOC_Dataset(torch.utils.data.Dataset):
         # 3. Return a data pair (e.g. image and label).
         img_s = Image.open(self.addrs_s[index]).convert('L')
         img_b = Image.open(self.addrs_b[index]).convert('L')    
-        
         img_s = np.asarray(img_s, dtype=np.float32)
         img_b = np.asarray(img_b, dtype=np.float32)
 
+        #print('getting image')
+        #print(self.addrs_s[index])
+        #print(img_s.shape)
+        #print(img_b.shape)       
+        
+        if(img_s.shape[0] == 105):
+            img_s_full = np.zeros((self.patch_size, self.patch_size), dtype=np.float32)
+            img_s_full[11:116, 11:116] = img_s
+            img_s = img_s_full       
+ 
         img_b = img_b.reshape([1, self.patch_size, self.patch_size])
         img_s = img_s.reshape([1, self.patch_size, self.patch_size])
         return img_b, img_s
@@ -111,7 +122,7 @@ class CNN_Model(nn.Module):
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Hyper parameters
-num_epochs = 5
+num_epochs = 3
 batch_size = 64
 learning_rate = 0.001
 
@@ -121,61 +132,72 @@ voc_dataset = VOC_Dataset(MODE='train')
 train_loader = torch.utils.data.DataLoader(dataset=voc_dataset,
                                            batch_size=batch_size, 
                                            shuffle=True)
+voc_valid_dataset = VOC_Dataset(MODE='valid')
+valid_loader = torch.utils.data.DataLoader(dataset=voc_valid_dataset,
+                                           batch_size=batch_size)
+for data in valid_loader:
+    img_b_val, img_s_val = data
+    break
 
+img_b_val = Variable(img_b_val).to(device)
+img_s_val = Variable(img_s_val).to(device)
 
 model = CNN_Model().to(device)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
 weight_decay=1e-5)
 
+train_loss_log = []
+valid_loss_log = []
+
 for epoch in range(num_epochs):
     start = time.time()
-    for data in train_loader:
-        
+    i = 0
+    for data in train_loader: 
+        if(i%100 == 0): 
+            print('batch: %d'%i)
         start_in = time.time()
-        print('batch: ')
+        
+        # Training 
         img_b, img_s = data
         img_b = Variable(img_b).to(device)
         img_s = Variable(img_s).to(device)
-        # ===================forward=====================
         output = model(img_b)
         loss = criterion(output, img_s)
-        # ===================backward====================
+        
+        # Validation
+        output_val = model(img_b_val)
+        loss_val = criterion(output_val, img_s_val)
+
+        # Update graph
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        end_in = time.time()
-    
-        end = time.time()
-        print('total time: {}'.format(end-start))
-        print('inner time: {}'.format(end-start_in))
-        start = end
+        
+        i +=1
 
     # ===================log========================
-    print('epoch [{}/{}], loss:{:.4f}'
-          .format(epoch+1, num_epochs, loss.data[0]))
+    train_loss_log.append(loss.data[0])
+    valid_loss_log.append(loss_val.data[0])
+    print('epoch [{}/{}], loss:{:.4f}, loss_valid: {:.4f}'.format(epoch+1, num_epochs, loss.data[0], loss_val.data[0]))
 
-torch.save(model.state_dict(), './conv_autoencoder.pth') 
-
-
-
+torch.save(model.state_dict(), './deblur_model.pth') 
 
 
-voc_test_dataset = VOC_Dataset(MODE='test')
+
+
+
+'''voc_test_dataset = VOC_Dataset(MODE='test')
 test_loader = torch.utils.data.DataLoader(dataset=voc_test_dataset,
                                            batch_size=16)
-all_inputs = []
-all_outputs = []
 for data in test_loader:
-    img_b,img_s = data
+    img_b,_ = data
     img_b = Variable(img_b).to(device)
-    img_s = Variable(img_b).to(device)
     output = model(img_b)
-    all_inputs.append(img.cpu().data.numpy())
-    all_outputs.append(output.cpu().data.numpy())
+    img_b = img_b.cpu().data.numpy()
+    img_s_pred = output.cpu().data.numpy()
     
-print(all_outputs[0].shape)
-
+'''
 
 
 
