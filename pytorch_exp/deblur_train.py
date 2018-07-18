@@ -10,7 +10,7 @@ from torchvision import transforms
 from scipy import signal
 from scipy import io
 from random import randint
-
+import time
 import numpy as np
 import torchvision.transforms as transforms
 import glob
@@ -25,9 +25,7 @@ class VOC_Dataset(torch.utils.data.Dataset):
         # TODO
         # 1. Initialize file paths or a list of file names
         self.path = '../../data/VOC2012_patches/'
-        
-        self.num_kernels = kernels.shape[2] # kernels = [41,41, num_kernels]
-        
+         
         self.patch_size_original = 105
         self.patch_size = 128
         
@@ -46,21 +44,35 @@ class VOC_Dataset(torch.utils.data.Dataset):
             o = io.loadmat(kernels_file)
             self.kernels = o['kernels']
         
+        self.kernels = self.kernels.astype(dtype=np.float32)        
+        self.num_kernels = self.kernels.shape[2] # kernels = [41,41, num_kernels]
+
     def __getitem__(self, index):
         # TODO
         # 1. Read one data from file (e.g. using numpy.fromfile, PIL.Image.open).
         # 2. Preprocess the data (e.g. torchvision.Transform).
         # 3. Return a data pair (e.g. image and label).
-        
+        print('getting item')
+        start = time.time()
         img_s = Image.open(self.addrs[index]).convert('L')
-        img_s = np.asarray(img, dtype=np.float32)
-        img_s_full = np.zeros((self.patch_size,self.patch_size))
+        
+        img_s = np.asarray(img_s, dtype=np.float32)
+        img_s_full = np.zeros((self.patch_size,self.patch_size), dtype=np.float32)
         img_s_full[11:116, 11:116] = img_s
         img_s = img_s_full
         k = k_idx = randint(0, self.num_kernels-1)
-        k = kernels[:,:,k_idx] 
+        k = self.kernels[:,:,k_idx] 
+
+
+        pre_conv = time.time()
         img_b = signal.convolve2d(img_s, k, mode='same')
+        post_conv= time.time()
+
+        img_b = img_b.reshape([1, self.patch_size, self.patch_size])
+        img_s = img_s.reshape([1, self.patch_size, self.patch_size])
         
+        end = time.time()
+        print('total get time: {} . Conv2d  time: {}'.format(end-start, post_conv-pre_conv))
         return img_b, img_s
         
     def __len__(self):
@@ -108,8 +120,8 @@ learning_rate = 0.001
 
 
 # You can then use the prebuilt data loader. 
-mnist_dataset = MNIST_Dataset(MODE='train')
-train_loader = torch.utils.data.DataLoader(dataset=mnist_dataset,
+voc_dataset = VOC_Dataset(MODE='train')
+train_loader = torch.utils.data.DataLoader(dataset=voc_dataset,
                                            batch_size=batch_size, 
                                            shuffle=True)
 
@@ -120,19 +132,28 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
 weight_decay=1e-5)
 
 for epoch in range(num_epochs):
+    start = time.time()
     for data in train_loader:
+        
+        start_in = time.time()
+        print('batch: ')
         img_b, img_s = data
         img_b = Variable(img_b).to(device)
         img_s = Variable(img_s).to(device)
         # ===================forward=====================
         output = model(img_b)
-        print('output:')
-        print(output.shape)
         loss = criterion(output, img_s)
         # ===================backward====================
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        end_in = time.time()
+    
+        end = time.time()
+        print('total time: {}'.format(end-start))
+        print('inner time: {}'.format(end-start_in))
+        start = end
+
     # ===================log========================
     print('epoch [{}/{}], loss:{:.4f}'
           .format(epoch+1, num_epochs, loss.data[0]))
