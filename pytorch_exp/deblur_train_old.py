@@ -1,3 +1,5 @@
+
+
 import matplotlib.pyplot as plt
 import torch 
 import torchvision
@@ -21,6 +23,7 @@ from PIL import Image
 
 
 class VOC_Dataset(torch.utils.data.Dataset):
+             
     def __init__(self, MODE):
         # TODO
         # 1. Initialize file paths or a list of file names
@@ -31,49 +34,53 @@ class VOC_Dataset(torch.utils.data.Dataset):
         
         self.kernels_path = '../../data/kernels/'
         self.kernels = None
-        self.addrs_s = None
-        self.addrs_b = None
+        self.addrs = None
         
         if(MODE=='train'):
-            self.addrs_s = glob.glob(self.path+'training_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'training_blury/*.jpg')
+            self.addrs = glob.glob(self.path+'training/*.jpg')
             kernels_file = self.kernels_path + 'train_kernels.mat'
             o = io.loadmat(kernels_file)
             self.kernels = o['kernels']
-        elif(MODE== 'test):
-            self.addrs_s = glob.glob(self.path+'testing_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'testing_blury/*.jpg')
-            kernels_file = self.kernels_path + 'test_kernels.mat'
-            o = io.loadmat(kernels_file)
-            self.kernels = o['kernels']
-        else:
-            self.addrs_s = glob.glob(self.path+'valid_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'valid_blury/*.jpg')
+        else(MODE== 'test):
+            self.addrs = glob.glob(self.path+'testing/*.jpg')
             kernels_file = self.kernels_path + 'test_kernels.mat'
             o = io.loadmat(kernels_file)
             self.kernels = o['kernels']
             
         self.kernels = self.kernels.astype(dtype=np.float32)        
         self.num_kernels = self.kernels.shape[2] # kernels = [41,41, num_kernels]
-        return
 
     def __getitem__(self, index):
         # TODO
         # 1. Read one data from file (e.g. using numpy.fromfile, PIL.Image.open).
         # 2. Preprocess the data (e.g. torchvision.Transform).
         # 3. Return a data pair (e.g. image and label).
-        img_s = Image.open(self.addrs_s[index]).convert('L')
-        img_b = Image.open(self.addrs_b[index]).convert('L')    
+        print('getting item')
+        start = time.time()
+        img_s = Image.open(self.addrs[index]).convert('L')
         
         img_s = np.asarray(img_s, dtype=np.float32)
-        img_b = np.asarray(img_b, dtype=np.float32)
+        img_s_full = np.zeros((self.patch_size,self.patch_size), dtype=np.float32)
+        img_s_full[11:116, 11:116] = img_s
+        img_s = img_s_full
+        k = k_idx = randint(0, self.num_kernels-1)
+        k = self.kernels[:,:,k_idx] 
+
+
+        pre_conv = time.time()
+        img_b = signal.convolve2d(img_s, k, mode='same')
+        post_conv= time.time()
 
         img_b = img_b.reshape([1, self.patch_size, self.patch_size])
         img_s = img_s.reshape([1, self.patch_size, self.patch_size])
+        
+        end = time.time()
+        print('total get time: {} . Conv2d  time: {}'.format(end-start, post_conv-pre_conv))
         return img_b, img_s
+
         
     def __len__(self):
-        return len(self.addrs_s)
+        return len(self.addrs)
 
 class CNN_Model(nn.Module):
     def __init__(self):
@@ -181,5 +188,4 @@ print(all_outputs[0].shape)
 
 
 
-    
 
