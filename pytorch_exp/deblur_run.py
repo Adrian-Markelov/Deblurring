@@ -84,6 +84,12 @@ class VOC_Dataset(torch.utils.data.Dataset):
         return len(self.addrs_s)
 
 
+
+model = TheModelClass
+model = torch.load('conv_autoencoder.pth')
+print(model)
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 voc_test_dataset = VOC_Dataset(MODE='test')
 test_loader = torch.utils.data.DataLoader(dataset=voc_test_dataset,
                                            batch_size=16)
