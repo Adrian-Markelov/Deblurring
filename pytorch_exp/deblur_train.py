@@ -27,7 +27,7 @@ from deblur_model import *
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Hyper parameters
-num_epochs = 150
+num_epochs = 100
 batch_size = 64
 learning_rate = 0.001
 
@@ -86,23 +86,12 @@ for epoch in range(num_epochs):
     valid_loss_log.append(loss_val.data[0])
     print('epoch [{}/{}], loss:{:.4f}, loss_valid: {:.4f}'.format(epoch+1, num_epochs, loss.data[0], loss_val.data[0]))
 
-torch.save(model.state_dict(), './deblur_model.pth') 
+torch.save(model.state_dict(), 'cnn_%d.pth'%num_epochs) 
 
 
 
 
 
-'''voc_test_dataset = VOC_Dataset(MODE='test')
-test_loader = torch.utils.data.DataLoader(dataset=voc_test_dataset,
-                                           batch_size=16)
-for data in test_loader:
-    img_b,_ = data
-    img_b = Variable(img_b).to(device)
-    output = model(img_b)
-    img_b = img_b.cpu().data.numpy()
-    img_s_pred = output.cpu().data.numpy()
-    
-'''
 
 
 

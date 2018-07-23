@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch 
 import torchvision
 import torch.nn as nn
@@ -15,7 +14,7 @@ import torchvision.transforms as transforms
 import glob
 from PIL import Image
 
-
+# https://github.com/milesial/Pytorch-UNet 
 
 class VOC_Dataset(torch.utils.data.Dataset):
     def __init__(self, MODE):
@@ -81,34 +80,39 @@ class VOC_Dataset(torch.utils.data.Dataset):
         return img_b, img_s
         
     def __len__(self):
-        return len(self.addrs_s)
+        return min(len(self.addrs_s), len(self.addrs_b))
 
 class CNN_Model(nn.Module):
     def __init__(self):
         super(CNN_Model, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 2, stride=1, padding=1),  # b, 16, 10, 10
+        self.cnn = nn.Sequential(
+            nn.Conv2d(1, 16, 3, stride=1, padding=1), 
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
-            nn.Conv2d(16, 8, 2, stride=1, padding=1),  # b, 8, 3, 3
+            nn.Conv2d(16, 32, 3, stride=1, padding=1),  
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2)  # b, 8, 2, 2
-        )
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 2, stride=2, padding=0),  # b, 16, 5, 5
+            nn.Conv2d(32, 64, 5, stride=1, padding=2),  
             nn.ReLU(True),
-            nn.ConvTranspose2d(16, 1, 2, stride=2, padding=0),  # b, 8, 15, 15
-            nn.ReLU(True)
+            nn.Conv2d(64, 64, 5, stride=1, padding=2),  
+            nn.ReLU(True),
+            nn.Conv2d(64, 32, 5, stride=1, padding=2),  
+            nn.ReLU(True),
+            nn.Conv2d(32, 16, 3, stride=1, padding=1),  
+            nn.ReLU(True),
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),  
+            nn.ReLU(True),
+            nn.Conv2d(8, 1, 3, stride=1, padding=1)  
         )
         
-        #print(self.encoder.shape)
-        #print(self.encoder.shape)
 
     def forward(self, x):
-        #print('forward')
-        #print(x.shape)
-        x = self.encoder(x)
-        #print('encoder')
-        #print(x.shape)
-        x = self.decoder(x)
+        x = self.cnn(x)
         return x
+
+
+class UNET_Model(nn.Module):
+    def __init__(self):
+        super(UNET_Model, self).__init__()
+
+    def forward(self, x):
+        return x
+

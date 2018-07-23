@@ -1,3 +1,4 @@
+
 import matplotlib.pyplot as plt
 import torch 
 import torchvision
@@ -20,22 +21,26 @@ import sys
 sys.path.insert(0,'./')
 from deblur_model import *
 
+import matplotlib
+#matplotlib.use('agg')
+plt.switch_backend('agg')
+plt.ioff()
 
 
 model = CNN_Model()
-model.load_state_dict(torch.load('conv_autoencoder.pth'))
+model.load_state_dict(torch.load('cnn_10.pth'))
 
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 voc_test_dataset = VOC_Dataset(MODE='test')
 test_loader = torch.utils.data.DataLoader(dataset=voc_test_dataset,
-                                           batch_size=16)
+                                           batch_size=64)
 all_inputs = []
 all_outputs = []
 for data in test_loader:
     img_b,img_s = data
-    img_b = Variable(img_b).to(device)
-    img_s = Variable(img_b).to(device)
+    img_b = Variable(img_b)
+    img_s = Variable(img_b)
     output = model(img_b)
     all_inputs.append(img_b.cpu().data.numpy())
     all_outputs.append(output.cpu().data.numpy())
