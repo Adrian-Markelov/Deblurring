@@ -28,7 +28,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Hyper parameters
 num_epochs = 100
-batch_size = 64
+batch_size = 128
 learning_rate = 0.001
 
 
@@ -79,7 +79,7 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
         
-        i +=1
+        i += 1
 
     # ===================log========================
     train_loss_log.append(loss.data[0])

@@ -20,39 +20,34 @@ class VOC_Dataset(torch.utils.data.Dataset):
     def __init__(self, MODE):
         # TODO
         # 1. Initialize file paths or a list of file names
-        self.path = '../../data/VOC2012_patches/'
+        self.path = '../../data/VOC_patches/'
          
-        self.patch_size_original = 105
+        #self.patch_size_original = 105
         self.patch_size = 128
         
         self.kernels_path = '../../data/kernels/'
         self.kernels = None
         self.addrs_s = None
         self.addrs_b = None
+        n_imgs = None
         
         if(MODE=='train'):
-            self.addrs_s = glob.glob(self.path+'training_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'training_blury/*.jpg')
-            kernels_file = self.kernels_path + 'train_kernels.mat'
-            o = io.loadmat(kernels_file)
-            self.kernels = o['kernels']
-            print(len(self.addrs_s))
-
+            self.addrs_s = glob.glob(self.path+'training/sharp/*.jpg')
+            self.addrs_b = glob.glob(self.path+'training/blury/*.jpg')
+            n_imgs = len(self.addrs_s)
+            print('num_imgs: %d'%n_imgs)
+            self.addrs_s = self.addrs_s[0:int(0.8*n_imgs)]
+            self.addrs_b = self.addrs_b[0:int(0.8*n_imgs)]
         elif(MODE== 'test'):
-            self.addrs_s = glob.glob(self.path+'testing_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'testing_blury/*.jpg')
-            kernels_file = self.kernels_path + 'test_kernels.mat'
-            o = io.loadmat(kernels_file)
-            self.kernels = o['kernels']
+            self.addrs_s = glob.glob(self.path+'testing/sharp/*.jpg')
+            self.addrs_b = glob.glob(self.path+'testing/blury/*.jpg')
+            n_imgs = len(self.addrs_s)
         else:
-            self.addrs_s = glob.glob(self.path+'valid_sharp/*.jpg')
-            self.addrs_b = glob.glob(self.path+'valid_blury/*.jpg')
-            kernels_file = self.kernels_path + 'test_kernels.mat'
-            o = io.loadmat(kernels_file)
-            self.kernels = o['kernels']
-            
-        self.kernels = self.kernels.astype(dtype=np.float32)        
-        self.num_kernels = self.kernels.shape[2] # kernels = [41,41, num_kernels]
+            self.addrs_s = glob.glob(self.path+'training/sharp/*.jpg')
+            self.addrs_b = glob.glob(self.path+'training/blury/*.jpg')
+            n_imgs = len(self.addrs_s)
+            self.addrs_s = self.addrs_s[int(0.8*n_imgs):n_imgs]
+            self.addrs_b = self.addrs_b[int(0.8*n_imgs):n_imgs]
         return
 
     def __getitem__(self, index):
@@ -70,10 +65,6 @@ class VOC_Dataset(torch.utils.data.Dataset):
         #print(img_s.shape)
         #print(img_b.shape)       
         
-        if(img_s.shape[0] == 105):
-            img_s_full = np.zeros((self.patch_size, self.patch_size), dtype=np.float32)
-            img_s_full[11:116, 11:116] = img_s
-            img_s = img_s_full       
  
         img_b = img_b.reshape([1, self.patch_size, self.patch_size])
         img_s = img_s.reshape([1, self.patch_size, self.patch_size])

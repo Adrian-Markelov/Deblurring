@@ -6,7 +6,7 @@ import numpy as np
 from random import randint
 from random import shuffle
 from PIL import Image
-
+import pickle
 
 
 voc_dir = '../../../datasets/VOC2012/JPEGImages/'
@@ -17,22 +17,35 @@ voc_addrs = glob.glob(voc_dir+'*.jpg')
 shuffle(voc_addrs)
 n_voc = len(voc_addrs)
 
-voc_train_addrs = voc_addrs[0:3]#voc_addrs[0:int(0.8*n_voc)] # validation will be split from the train set
-voc_test_addrs = voc_addrs[3:5]#voc_addrs[int(0.8*n_voc):n_voc]
+voc_train_addrs = voc_addrs[0:int(0.8*n_voc)] # validation will be split from the train set
+voc_test_addrs = voc_addrs[int(0.8*n_voc):n_voc]
 
 n_train_voc = len(voc_train_addrs)
 n_test_voc = len(voc_test_addrs)
 
-train_kernels_o = io.loadmat('../../data/kernels/train_kernels.mat')
-test_kernels_o = io.loadmat('../../data/kernels/test_kernels.mat')
-train_kernels = train_kernels_o['kernels']
-test_kernels = test_kernels_o['kernels']
+#train_kernels_o = io.loadmat('../../data/kernels/train_kernels.mat')
+#test_kernels_o = io.loadmat('../../data/kernels/test_kernels.mat')
+#train_kernels = train_kernels_o['kernels']
+#test_kernels = test_kernels_o['kernels']
 
-noise_sigma = 5
+train_kernels = None
+test_kernels = None
+
+with open('../../data/kernels/train_kernels.pickle', 'rb') as handle:
+    train_kernels = pickle.load(handle)
+
+with open('../../data/kernels/test_kernels.pickle', 'rb') as handle:
+    test_kernels = pickle.load(handle)
+
+
+
+
+noise_sigma = 2
 patch_size = 128
 
 
-n_patches_per_img = 4
+n_patches_per_img = 2
+
 
 def get_patch(img, patch_size):
     img_size_h = img.shape[0]
@@ -55,13 +68,15 @@ def make_patches(voc_addrs, kernels, save_path):
         print(patch_count)
         img = Image.open(voc_addrs[i]).convert('L')
         img = np.asarray(img)
+        if(img.shape[0] <= patch_size or img.shape[1] <= patch_size):
+            continue
         for j in range(n_patches_per_img):
             img_s = get_patch(img, patch_size)
             
             # Convolve with blur kernel
             n_kernels = kernels.shape[2]
             k_idx = randint(0, n_kernels-1)
-            k = kernels[:,:,k_idx]
+            k = kernels[k_idx,:,:]
 
             img_b = signal.convolve2d(img_s, k, mode='same')
 
