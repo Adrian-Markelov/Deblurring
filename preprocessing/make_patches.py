@@ -41,6 +41,7 @@ with open('../../data/kernels/test_kernels.pickle', 'rb') as handle:
 
 
 noise_sigma = 2
+patch_size_plus = 136
 patch_size = 128
 
 
@@ -68,17 +69,17 @@ def make_patches(voc_addrs, kernels, save_path):
         print(patch_count)
         img = Image.open(voc_addrs[i]).convert('L')
         img = np.asarray(img)
-        if(img.shape[0] <= patch_size or img.shape[1] <= patch_size):
+        if(img.shape[0] <= patch_size_plus or img.shape[1] <= patch_size_plus):
             continue
         for j in range(n_patches_per_img):
-            img_s = get_patch(img, patch_size)
-            
+            img_s_plus = get_patch(img, patch_size_plus)
+            img_s = img_s_plus[4:132,4:132]
             # Convolve with blur kernel
             n_kernels = kernels.shape[2]
             k_idx = randint(0, n_kernels-1)
             k = kernels[k_idx,:,:]
 
-            img_b = signal.convolve2d(img_s, k, mode='same')
+            img_b = signal.convolve2d(img_s_plus, k, mode='valid')
 
             # Add white noise
             noise = np.random.randn(patch_size, patch_size) * noise_sigma            

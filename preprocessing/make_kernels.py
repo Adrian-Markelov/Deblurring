@@ -8,9 +8,9 @@ k_o = io.loadmat('../../data/kernels/train_kernels.mat')
 k = k_o['kernels']
 
 
-k_new = np.zeros((10000,10,10), dtype=np.float32)
+k_new = np.zeros((10000,9,9), dtype=np.float32)
 for i in range(10000):
-    k_new[i,:,:] = k[15:25,15:25,i]
+    k_new[i,:,:] = k[15:24,15:24,i]
 k = k_new
 with open('../../data/kernels/train_kernels.pickle', 'wb') as handle:
     pickle.dump(k, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -20,9 +20,9 @@ with open('../../data/kernels/train_kernels.pickle', 'wb') as handle:
 k_o = io.loadmat('../../data/kernels/test_kernels.mat')
 k = k_o['kernels']  
 
-k_new = np.zeros((2000,10,10), dtype=np.float32)
+k_new = np.zeros((2000,9,9), dtype=np.float32)
 for i in range(2000):
-    k_new[i,:,:] = k[15:25,15:25,i]
+    k_new[i,:,:] = k[15:24,15:24,i]
 k = k_new
 with open('../../data/kernels/test_kernels.pickle', 'wb') as handle:
     pickle.dump(k, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -7,7 +7,9 @@ import numpy as np
 import glob
 from PIL import Image
 
-from .unet_parts import *
+import sys
+sys.path.insert(0,'./')
+from unet_parts import *
 
 # https://github.com/milesial/Pytorch-UNet 
 

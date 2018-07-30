@@ -19,7 +19,7 @@ from PIL import Image
 
 import sys
 sys.path.insert(0,'./')
-from deblur_model import *
+from model_deblur import *
 
 import matplotlib
 #matplotlib.use('agg')
@@ -28,7 +28,7 @@ plt.ioff()
 
 
 model = CNN_Model()
-model.load_state_dict(torch.load('cnn_100.pth'))
+model.load_state_dict(torch.load('models/cnn_100.pth'))
 
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -41,7 +41,7 @@ all_true = []
 for data in test_loader:
     img_b,img_s = data
     img_b = Variable(img_b)
-    img_s = Variable(img_b)
+    img_s = Variable(img_s)
     output = model(img_b)
     all_inputs.append(img_b.cpu().data.numpy())
     all_outputs.append(output.cpu().data.numpy())
@@ -51,6 +51,18 @@ for data in test_loader:
 img_s_batch = all_true[0]
 img_b_batch = all_inputs[0]
 output_batch = all_outputs[0]
+
+
+fig = plt.figure(figsize=(20,30))
+fig.add_subplot(1,3,1)
+plt.imshow(img_s_batch[1,0,:,:],cmap='gray')
+fig.add_subplot(1,3,2)
+plt.imshow(img_b_batch[1,0,:,:],cmap='gray')
+fig.add_subplot(1,3,3)
+plt.imshow(output_batch[1,0,:,:],cmap='gray')
+plt.savefig('single_deblurs.png')
+plt.close(fig)
+
 
 plot_rows = 6
 plot_cols = 9

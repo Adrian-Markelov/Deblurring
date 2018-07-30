@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+plt.ioff()
 
 import torch 
 import torch.nn as nn
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 import time
@@ -11,19 +14,19 @@ from PIL import Image
 
 import sys
 sys.path.insert(0,'./')
-from deblur_model import *
+from model_deblur import *
 
+# Hyper parameters
+num_epochs = 2
+batch_size = 128
+learning_rate = 0.001
+MODEL_MODE = 'CNN'
 
 
     
     
 # Device configuration
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-# Hyper parameters
-num_epochs = 100
-batch_size = 128
-learning_rate = 0.001
 
 
 # You can then use the prebuilt data loader. 
@@ -41,7 +44,12 @@ for data in valid_loader:
 img_b_val = Variable(img_b_val).to(device)
 img_s_val = Variable(img_s_val).to(device)
 
-model = CNN_Model().to(device)
+model = None
+if(MODEL_MODE == 'CNN'):
+    model = CNN_Model().to(device)
+elif(MODEL_MODE == 'UNET'):
+    model = UNET_Model().to(device)
+
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,
 weight_decay=1e-5)
@@ -79,6 +87,11 @@ for epoch in range(num_epochs):
     train_loss_log.append(loss.data[0])
     valid_loss_log.append(loss_val.data[0])
     print('epoch [{}/{}], loss:{:.4f}, loss_valid: {:.4f}'.format(epoch+1, num_epochs, loss.data[0], loss_val.data[0]))
+
+plt.plot(train_loss_log, color='blue', label='training loss')
+plt.plot(valid_loss_log, color='red', label='valud loss')
+plt.legend()
+plt.savefig('loss_function_E{}.png'.format(num_epochs))
 
 torch.save(model.state_dict(), 'cnn_%d.pth'%num_epochs) 
 
