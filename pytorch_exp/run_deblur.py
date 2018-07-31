@@ -28,7 +28,7 @@ plt.ioff()
 
 
 model = CNN_Model()
-model.load_state_dict(torch.load('models/cnn_100.pth'))
+model.load_state_dict(torch.load('models/residual_cnn_E20.pth'))
 
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

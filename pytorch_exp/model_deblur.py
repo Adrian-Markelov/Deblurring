@@ -70,12 +70,13 @@ class VOC_Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return min(len(self.addrs_s), len(self.addrs_b))
 
-class CNN_Model(nn.Module):
+class CNN_RES_Model(nn.Module):
     def __init__(self):
         super(CNN_Model, self).__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv2d(1, 16, 3, stride=1, padding=1), 
-            nn.ReLU(True),
+        self.conv_1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
+            
+
+        self.inner = nn.Sequential(
             nn.Conv2d(16, 32, 3, stride=1, padding=1),  
             nn.ReLU(True),
             nn.Conv2d(32, 64, 5, stride=1, padding=2),  
@@ -87,14 +88,56 @@ class CNN_Model(nn.Module):
             nn.Conv2d(32, 16, 3, stride=1, padding=1),  
             nn.ReLU(True),
             nn.Conv2d(16, 8, 3, stride=1, padding=1),  
-            nn.ReLU(True),
-            nn.Conv2d(8, 1, 3, stride=1, padding=1)  
-        )
+            nn.ReLU(True)
+            )
+        self.out = nn.Conv2d(8, 1, 3, stride=1, padding=1)  
+        
         
 
     def forward(self, x):
-        x = self.cnn(x)
-        return x
+        l1 = F.relu(self.conv_1(x))
+        inner = self.inner(l1)
+        out = self.out(inner)
+        out = torch.abs(out-x)
+        return out
+
+
+
+class CNN_Model(nn.Module):
+    def __init__(self):
+        super(CNN_Model, self).__init__()
+        self.conv_1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
+            
+
+        self.inner = nn.Sequential(
+            nn.Conv2d(16, 32, 3, stride=1, padding=1),  
+            nn.ReLU(True),
+            nn.Conv2d(32, 64, 5, stride=1, padding=2),  
+            nn.ReLU(True),
+            nn.Conv2d(64, 64, 5, stride=1, padding=2),  
+            nn.ReLU(True),
+            nn.Conv2d(64, 32, 5, stride=1, padding=2),  
+            nn.ReLU(True),
+            nn.Conv2d(32, 16, 3, stride=1, padding=1),  
+            nn.ReLU(True),
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),  
+            nn.ReLU(True)
+            )
+        self.out = nn.Conv2d(8, 1, 3, stride=1, padding=1)  
+        
+        
+
+    def forward(self, x):
+        l1 = F.relu(self.conv_1(x))
+        inner = self.inner(l1)
+        out = self.out(inner)
+        return out
+
+
+
+
+
+
 
 
     

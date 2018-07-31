@@ -17,11 +17,12 @@ sys.path.insert(0,'./')
 from model_deblur import *
 
 # Hyper parameters
-num_epochs = 2
+num_epochs = 20
 batch_size = 128
 learning_rate = 0.001
 MODEL_MODE = 'CNN'
-
+TV_REG = True
+REGULARIZATION = .0001
 
     
     
@@ -72,6 +73,11 @@ for epoch in range(num_epochs):
         output = model(img_b)
         loss = criterion(output, img_s)
         
+        if(TV_REG):
+            reg_loss = REGULARIZATION*(torch.sum(torch.abs(output[:, :, :, :-1] - output[:, :, :, 1:])) +
+                                       torch.sum(torch.abs(output[:, :, :-1, :] - output[:, :, 1:, :])))
+            loss = loss + reg_loss
+
         # Validation
         output_val = model(img_b_val)
         loss_val = criterion(output_val, img_s_val)
@@ -93,7 +99,7 @@ plt.plot(valid_loss_log, color='red', label='valud loss')
 plt.legend()
 plt.savefig('loss_function_E{}.png'.format(num_epochs))
 
-torch.save(model.state_dict(), 'cnn_%d.pth'%num_epochs) 
+torch.save(model.state_dict(), 'models/residual_cnn_%d.pth'%num_epochs) 
 
 
 
