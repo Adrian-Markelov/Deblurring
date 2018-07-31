@@ -70,35 +70,30 @@ class VOC_Dataset(torch.utils.data.Dataset):
     def __len__(self):
         return min(len(self.addrs_s), len(self.addrs_b))
 
-class CNN_RES_Model(nn.Module):
+class RES_CNN_Model(nn.Module):
     def __init__(self):
-        super(CNN_Model, self).__init__()
+        super(RES_CNN_Model, self).__init__()
         self.conv_1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
-            
-
-        self.inner = nn.Sequential(
-            nn.Conv2d(16, 32, 3, stride=1, padding=1),  
-            nn.ReLU(True),
-            nn.Conv2d(32, 64, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(64, 64, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(64, 32, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(32, 16, 3, stride=1, padding=1),  
-            nn.ReLU(True),
-            nn.Conv2d(16, 8, 3, stride=1, padding=1),  
-            nn.ReLU(True)
-            )
-        self.out = nn.Conv2d(8, 1, 3, stride=1, padding=1)  
+        self.conv_2 = nn.Conv2d(16, 32, 3, stride=1, padding=1)
+        self.conv_3 = nn.Conv2d(32, 64, 5, stride=1, padding=2)
+        self.conv_4 = nn.Conv2d(64, 64, 5, stride=1, padding=2)
+        self.conv_5 = nn.Conv2d(64, 32, 5, stride=1, padding=2)
+        self.conv_6 = nn.Conv2d(32, 16, 3, stride=1, padding=1)
+        self.conv_7 = nn.Conv2d(16, 8, 3, stride=1, padding=1)
+        self.conv_8 = nn.Conv2d(8, 1, 3, stride=1, padding=1)  
         
         
 
     def forward(self, x):
         l1 = F.relu(self.conv_1(x))
-        inner = self.inner(l1)
-        out = self.out(inner)
-        out = torch.abs(out-x)
+        l2 = F.relu(self.conv_2(l1-x))
+        l3 = F.relu(self.conv_3(l1+l2-x))
+        l4 = F.relu(self.conv_4(l2+l3-x))
+        l5 = F.relu(self.conv_5(l3+l4-x))
+        l6 = F.relu(self.conv_6(l4+l5-x))
+        l7 = F.relu(self.conv_7(l5+l6-x))
+        l8 = F.relu(self.conv_8(l6+l7-x))
+        out = torch.abs(l8-x)
         return out
 
 
