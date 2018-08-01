@@ -36,7 +36,7 @@ def setup_data(device):
     return train_loader, img_b_val, img_s_val
 
 
-def setup_model(model_info)
+def setup_model(model_info, device):
     learning_rate = 0.001
     
     model = None
@@ -70,7 +70,7 @@ def train(model_info, loss_model, epochs, batch_size):
     train_loader, img_b_val, img_s_val = setup_data(device)
 
     # Get The Model
-    model, optimizer = setup_model(model_info)
+    model, optimizer = setup_model(model_info, device)
     
     criterion = nn.MSELoss()
 
@@ -106,7 +106,9 @@ def train(model_info, loss_model, epochs, batch_size):
         # ===================log========================
         train_loss_log.append(loss.data[0])
         valid_loss_log.append(loss_val.data[0])
-        print('epoch [{}/{}], loss:{:.4f}, loss_valid: {:.4f}'.format(epoch+1, num_epochs, loss.data[0], loss_val.data[0]))
+        end = time.time() 
+        print('Batch time: %d'%int(end-start))
+        print('epoch [{}/{}], loss:{:.4f}, loss_valid: {:.4f}'.format(epoch+1, epochs, loss.data[0], loss_val.data[0]))
 
     plt.plot(train_loss_log, color='blue', label='training loss')
     plt.plot(valid_loss_log, color='red', label='valid loss')
@@ -127,7 +129,7 @@ def train(model_info, loss_model, epochs, batch_size):
 
 if __name__ == "__main__":
     
-    mode_info = sys.argv[1]
+    model_info = sys.argv[1]
     epochs = int(sys.argv[2])
     batch_size = int(sys.argv[3])
     loss_model = None

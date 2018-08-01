@@ -86,13 +86,13 @@ class RES_CNN_Model(nn.Module):
 
     def forward(self, x):
         l1 = F.relu(self.conv_1(x))
-        l2 = F.relu(self.conv_2(l1-x))
-        l3 = F.relu(self.conv_3(l1+l2-x))
-        l4 = F.relu(self.conv_4(l2+l3-x))
-        l5 = F.relu(self.conv_5(l3+l4-x))
-        l6 = F.relu(self.conv_6(l4+l5-x))
-        l7 = F.relu(self.conv_7(l5+l6-x))
-        l8 = F.relu(self.conv_8(l6+l7-x))
+        l2 = F.relu(self.conv_2(l1))
+        l3 = F.relu(self.conv_3(l2))
+        l4 = F.relu(self.conv_4(l3))
+        l5 = F.relu(self.conv_5(l4))
+        l6 = F.relu(self.conv_6(l2+l5))
+        l7 = F.relu(self.conv_7(l1+l6))
+        l8 = F.relu(self.conv_8(l7))
         out = torch.abs(l8-x)
         return out
 
@@ -102,42 +102,29 @@ class CNN_Model(nn.Module):
     def __init__(self):
         super(CNN_Model, self).__init__()
         self.conv_1 = nn.Conv2d(1, 16, 3, stride=1, padding=1)
-            
-
-        self.inner = nn.Sequential(
-            nn.Conv2d(16, 32, 3, stride=1, padding=1),  
-            nn.ReLU(True),
-            nn.Conv2d(32, 64, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(64, 64, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(64, 32, 5, stride=1, padding=2),  
-            nn.ReLU(True),
-            nn.Conv2d(32, 16, 3, stride=1, padding=1),  
-            nn.ReLU(True),
-            nn.Conv2d(16, 8, 3, stride=1, padding=1),  
-            nn.ReLU(True)
-            )
-        self.out = nn.Conv2d(8, 1, 3, stride=1, padding=1)  
-        
-        
+        self.conv_2 = nn.Conv2d(16, 32, 3, stride=1, padding=1)
+        self.conv_3 = nn.Conv2d(32, 64, 5, stride=1, padding=2)
+        self.conv_4 = nn.Conv2d(64, 64, 5, stride=1, padding=2)
+        self.conv_5 = nn.Conv2d(64, 32, 5, stride=1, padding=2)
+        self.conv_6 = nn.Conv2d(32, 16, 3, stride=1, padding=1)
+        self.conv_7 = nn.Conv2d(16, 8, 3, stride=1, padding=1)
+        self.conv_8 = nn.Conv2d(8, 1, 3, stride=1, padding=1)             
 
     def forward(self, x):
         l1 = F.relu(self.conv_1(x))
-        inner = self.inner(l1)
-        out = self.out(inner)
+        l2 = F.relu(self.conv_2(l1))
+        l3 = F.relu(self.conv_3(l2))
+        l4 = F.relu(self.conv_4(l3))
+        l5 = F.relu(self.conv_5(l4))
+        l6 = F.relu(self.conv_6(l5))
+        l7 = F.relu(self.conv_7(l6))
+        out = F.relu(self.conv_8(l7))
         return out
-
-
-
-
-
-
 
 
     
 class UNET_Model(nn.Module):
-    def __init__(self, n_channels, n_classes):
+    def __init__(self):
         super(UNET_Model, self).__init__()
         self.inc = inconv(1, 16)
         self.down1 = down(16, 32)
@@ -148,7 +135,7 @@ class UNET_Model(nn.Module):
         self.up2 = up(128, 32)
         self.up3 = up(64, 16)
         self.up4 = up(32, 8)
-        self.outc = outconv(16, 1)
+        self.outc = outconv(8, 1)
 
     def forward(self, x):
         x1 = self.inc(x)
