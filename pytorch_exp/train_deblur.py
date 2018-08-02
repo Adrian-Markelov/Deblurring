@@ -65,7 +65,6 @@ def train(model_info, loss_model, epochs, batch_size):
     # Device configuration
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-
     # Get The Data
     train_loader, img_b_val, img_s_val = setup_data(device)
 

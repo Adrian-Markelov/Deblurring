@@ -39,6 +39,8 @@ if __name__ == "__main__":
         model = RES_CNN_Model()
     elif(model_info == 'UNET'):
         model = UNET_Model()
+    elif(model_info == 'GAN'):
+        model = Generator()
     
     model.load_state_dict(torch.load(model_file))
 
