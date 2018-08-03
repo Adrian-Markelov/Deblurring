@@ -1,5 +1,6 @@
 import torch 
 import torch.nn as nn
+import torch.utils.data
 import torch.nn.functional as F
 
 import time
@@ -169,8 +170,8 @@ class Generator(nn.Module):
         l3 = F.relu(self.conv_3(l2))
         l4 = F.relu(self.conv_4(l3))
         l5 = F.relu(self.conv_5(l4))
-        l6 = F.relu(self.conv_6(l2+l5))
-        l7 = F.relu(self.conv_7(l1+l6))
+        l6 = F.relu(self.conv_6(l5))
+        l7 = F.relu(self.conv_7(l6))
         l8 = F.relu(self.conv_8(l7))
         out = torch.abs(l8-x)
         return out
@@ -183,8 +184,8 @@ class Discriminator(nn.Module):
         self.conv_3 = nn.Conv2d(32, 32, 5, stride=1, padding=2)
         self.conv_4 = nn.Conv2d(32, 16, 5, stride=1, padding=2)
         self.conv_5 = nn.Conv2d(16, 1, 5, stride=1, padding=2)
-        self.fc1 = 
-        self.fc2 = 
+        self.fc1 = nn.Linear(16384, 5000)
+        self.fc2 = nn.Linear(5000, 1)
 
     def forward(self, x):
         l1 = F.relu(self.conv_1(x))
@@ -194,5 +195,5 @@ class Discriminator(nn.Module):
         l5 = F.relu(self.conv_5(l4))
         l5 = l5.view(-1, 16384)
         l6 = F.relu(self.fc1(l5))
-        l7 = F.relu(self.fc1(l6))
-        return 
+        l7 = F.relu(self.fc2(l6))
+        return torch.sigmoid(l7)

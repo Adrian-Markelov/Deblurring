@@ -18,7 +18,7 @@ from model_deblur import *
 
 
 
-def setup_data(device):
+def setup_data(device, batch_size):
     voc_dataset = VOC_Dataset(MODE='train')
     train_loader = torch.utils.data.DataLoader(dataset=voc_dataset,
                                                batch_size=batch_size, 
@@ -66,7 +66,7 @@ def train(model_info, loss_model, epochs, batch_size):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Get The Data
-    train_loader, img_b_val, img_s_val = setup_data(device)
+    train_loader, img_b_val, img_s_val = setup_data(device, batch_size)
 
     # Get The Model
     model, optimizer = setup_model(model_info, device)

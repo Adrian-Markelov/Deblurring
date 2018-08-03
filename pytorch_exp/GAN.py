@@ -11,7 +11,7 @@ sys.path.insert(0,'./')
 from model_deblur import *
 
 
-def setup_data(device):
+def setup_data(device, batch_size):
     voc_dataset = VOC_Dataset(MODE='train')
     train_loader = torch.utils.data.DataLoader(dataset=voc_dataset,
                                                batch_size=batch_size, 
@@ -33,7 +33,7 @@ def setup_data(device):
 
 
 
-def train(epochs):
+def train(epochs, batch_size):
     
     d_learning_rate = 2e-4  # 2e-4
     g_learning_rate = 2e-4
@@ -46,14 +46,14 @@ def train(epochs):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Get The Data
-    train_loader, img_b_val, img_s_val = setup_data(device)
+    train_loader, img_b_val, img_s_val = setup_data(device, batch_size)
 
     
     G_criterion = nn.MSELoss()
     D_criterion = nn.BCELoss()  # Binary cross entropy: http://pytorch.org/docs/nn.html#bceloss
     
-    G = Generator()
-    D = Discriminator()
+    G = Generator().to(device)
+    D = Discriminator().to(device)
     
     
     d_optimizer = optim.Adam(D.parameters(), lr=d_learning_rate)
@@ -69,20 +69,24 @@ def train(epochs):
             img_b, img_s = data
             img_b = Variable(img_b).to(device)
             img_s = Variable(img_s).to(device)
-                        
+            temp_batch_shape = img_s.size()
+            temp_batch_size = temp_batch_shape[0]
             for d_index in range(d_steps):
                 # 1. Train D on real+fake
                 D.zero_grad()
 
                 #  1A: Train D on real
                 d_real_decision = D(img_s)
-                d_real_error = D_criterion(d_real_decision, Variable(torch.ones(1)))  # ones = true
+                
+                #print(d_real_decision.size())
+ 
+                d_real_error = D_criterion(d_real_decision, Variable(torch.ones(temp_batch_size)).to(device))  # ones = true
                 d_real_error.backward() # compute/store gradients, but don't change params
 
                 #  1B: Train D on fake
                 img_s_pred = G(img_b).detach()  # detach to avoid training G on these labels
                 d_fake_decision = D(img_s_pred)
-                d_fake_error = criterion(d_fake_decision, Variable(torch.zeros(1)))  # zeros = fake
+                d_fake_error = D_criterion(d_fake_decision, Variable(torch.zeros(temp_batch_size)).to(device))  # zeros = fake
                 d_fake_error.backward()
                 d_optimizer.step()     # Only optimizes D's parameters; changes based on stored gradients from backward()
 
@@ -92,11 +96,15 @@ def train(epochs):
 
                 img_s_pred = G(img_b) 
                 dg_fake_decision = D(img_s_pred)
-                g_error = D_criterion(dg_fake_decision, Variable(torch.ones(1)))  # we want to fool, so pretend it's all genuine
-                g_error += G_criterion(img_s, img_s_pred)
+                g_error = D_criterion(dg_fake_decision, Variable(torch.ones(temp_batch_size)).to(device))  # we want to fool, so pretend it's all genuine
+                
+                #print('D LOSS: %d'%g_error.data[0])
+                blurr_error = G_criterion(img_s_pred, img_s)
+                g_error += blurr_error
+                #print('G LOSS: %d'%blurr_error.data[0])
                 g_error.backward()
                 g_optimizer.step()  # Only optimizes G's parameters
-        i +=1
+            i +=1
     
     G_model_file = 'models/simple_GEN_E'+str(epochs)+'.pth'
     D_model_file = 'models/simple_DES_E'+str(epochs)+'.pth'
@@ -106,6 +114,6 @@ def train(epochs):
 
 if __name__ == "__main__":
     epochs = int(sys.argv[1])
-    
-    train(epochs)
+    batch_size = int(sys.argv[2])
+    train(epochs, batch_size)
 
